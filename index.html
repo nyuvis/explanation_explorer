@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Overview</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" type="text/css" href="lib/jk-js/lib/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="lib/font-awesome/css/font-awesome.min.css">
+  <script src="lib/jk-js/lib/d3/d3.min.js" charset="utf-8"></script>
+  <script src="lib/jk-js/jkjs/select.js" charset="utf-8"></script>
+  <script src="lib/jk-js/jkjs/path.js" charset="utf-8"></script>
+  <script src="lib/jk-js/jkjs/cell.js" charset="utf-8"></script>
+  <script src="lib/jk-js/jkjs/text.js" charset="utf-8"></script>
+  <script src="lib/jk-js/jkjs/util.js" charset="utf-8"></script>
+  <script src="js/confusion.js" charset="utf-8"></script>
+  <script src="js/countline.js" charset="utf-8"></script>
+  <script src="js/search.js" charset="utf-8"></script>
+  <script src="js/worker.js" charset="utf-8"></script>
+  <script src="js/bars.js" charset="utf-8"></script>
+  <script src="js/list.js" charset="utf-8"></script>
+  <script src="js/sort.js" charset="utf-8"></script>
+  <script src="js/roc.js" charset="utf-8"></script>
+  <script src="js/ixs.js" charset="utf-8"></script>
+  <script src="js/net.js" charset="utf-8"></script>
+  <style>
+  .axis {
+    shape-rendering: crispEdges;
+  }
+
+  .x.axis, .y.axis {
+    stroke: black;
+    font-weight: 100;
+  }
+
+  .x.axis .minor, .y.axis .minor {
+    stroke-opacity: .5;
+  }
+
+  .x.axis path, .y.axis path {
+    display: none;
+  }
+
+  label {
+    font-weight: normal;
+  }
+
+  .clickable {
+    cursor: pointer;
+  }
+
+  .clickable:hover {
+    background-color: #eee;
+  }
+
+  .elem:hover {
+    background-color: #eee;
+  }
+  </style>
+</head>
+<body onload="start()">
+<nav class="navbar navbar-default">
+  <div class="container-fluid">
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav">
+        <li class="active"><a href="index.html" id="nav_ov">Overview</a></li>
+        <li><a href="explainer.html" id="nav_ex">Explanation</a></li>
+        <li><a href="inspector.html" id="nav_in">Inspection</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<div style="display: flex; justify-content: center; height: calc(100vh - 72px); overflow: auto;">
+  <div style="margin: auto 0; padding: 5px;">
+    <div style="display: flex; justify-content: center;" id="ch"></div>
+    <div style="display: flex; justify-content: space-around;">
+      <span style="display: flex; justify-content: center;">
+        <h4 style="padding: 5px;">Training AUC:</h4><h4 id="train_auc"></h4>
+      </span>
+      <span style="display: flex; justify-content: center;">
+        <h4 style="padding: 5px;">Testing AUC:</h4><h4 style="text-decoration: underline;" id="auc"></h4>
+      </span>
+      <span style="display: flex; justify-content: center;">
+        <h4 style="padding: 5px;">Accuracy:</h4><h4 id="accuracy"></h4>
+      </span>
+    </div>
+    <div style="display: flex; justify-content: space-around;">
+      <div style="display: flex; flex-direction: column; justify-content: center;" id="conf"></div>
+      <div style="display: flex; flex-direction: column; justify-content: center;" id="roc"></div>
+    </div>
+  </div>
+</div>
+<div id="hidden" style="position: fixed; left: 0; top: 72px; width: 100vw; height: calc(100vh - 72px); background: white; margin: 0; padding: 0;"></div>
+<p id="status" style="position: fixed; left: 5px; bottom: 5px;"></p>
+<script>
+function start() {
+  var urlArgs = jkjs.util.getQueryStrings();
+  var COLOR_LEFT_DARK = "#2166ac";
+  var COLOR_LEFT = "#67a9cf";
+  var COLOR_LEFT_BRIGHT = "#d1e5f0";
+  var COLOR_MID = "white";
+  var COLOR_MID_ALT = "black";
+  var COLOR_RIGHT_DARK = "#b2182b";
+  var COLOR_RIGHT = "#ef8a62";
+  var COLOR_RIGHT_BRIGHT = "#fddbc7";
+  var COLOR_SEL = "khaki";
+  var COLOR_FIX = "forestgreen";
+  var COLOR_TMP = "lightgray";
+  var _fmt = d3.format(".3g");
+  var fmt = (v) => {
+    if(+v !== v) {
+      return "" + v;
+    }
+    if(Math.floor(v) === v) {
+      return "" + v;
+    }
+    if(v <= 0.1) {
+      var t = Math.round(v * 1000.0) / 1000.0;
+      if(t > 0) {
+        return (t + "000").substring(0, 5);
+      }
+      return "0.000";
+    }
+    return _fmt(v);
+  };
+
+  var net = new Net(d3.select("#status"));
+  var work = new quick_server.Worker();
+  work.status((req) => net.otherReq(req));
+
+  var token = new jkjs.Cell(urlArgs["token"] || "");
+
+  d3.select("#nav_ov").on("click", () => {
+    var e = d3.event;
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  d3.select("#nav_ex").on("click", () => {
+    var e = d3.event;
+    window.open(net.url(d3.select("#nav_ex").attr("href"), {
+      "token": token.value,
+    }), "_self");
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  d3.select("#nav_in").on("click", () => {
+    var e = d3.event;
+    window.open(net.url(d3.select("#nav_in").attr("href"), {
+      "token": token.value,
+    }), "_self");
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  var ch = new CountLine(d3.select("#ch"), 800, 150, 40, () => {
+  }, d3.select(), fmt, [ COLOR_LEFT, COLOR_RIGHT, COLOR_TMP, COLOR_LEFT_DARK, COLOR_RIGHT_DARK ], true);
+  ch.onROCTemp((score) => roc.setROCTemp(score));
+
+  var confusion = new Confusion(d3.select("#conf"), [ COLOR_LEFT, COLOR_RIGHT ], true, "18px", "2px");
+
+  var roc = new ROC(d3.select("#roc"), {
+    "x-axis": ROC.SETTING_ROC["x-axis"],
+    "y-axis": ROC.SETTING_ROC["y-axis"],
+    "x": ROC.SETTING_ROC["x"],
+    "y": ROC.SETTING_ROC["y"],
+    "shade": ROC.SETTING_ROC["shade"],
+    "diagonal": ROC.SETTING_ROC["diagonal"],
+    "note": "",
+  }, 200, 40, (th, left) => {
+  }, d3.select(), fmt, [ COLOR_LEFT, COLOR_RIGHT, COLOR_TMP ]);
+  roc.interactive(false);
+  roc.onROCTemp((score) => ch.setROCTemp(score));
+
+  net.get("roc", "explainer_roc_curve/?pred_ixs=1&token=" + token.value, (data) => {
+    token.value = data["token"];
+    token.addChangeListener(() => {
+      var totalPoints = +data["total_points"];
+      var bestL = +data["best_l"];
+      var bestR = +data["best_r"];
+      if(Number.isNaN(bestL) || Number.isNaN(bestR)) {
+        throw {
+          "err": "cannot initialize model",
+        };
+      }
+      var stats = data["stats"];
+      stats["accuracy"] = fmt(stats["accuracy"] * 100.0) + "%";
+      stats["auc"] = data["auc"];
+      stats["train_auc"] = data["train_auc"];
+      [ "accuracy", "train_auc", "auc", ].forEach((k) =>
+        d3.select("#" + k).text(fmt(stats[k])).style({
+          "padding": "5px",
+        })
+      );
+      confusion.stats(stats);
+      confusion.update();
+      var points = data["roc"];
+      roc.auc(+data["auc"]);
+      roc.points(points);
+      roc.setROCThreshold(bestL, true);
+      roc.setROCThreshold(bestR, false);
+      roc.update();
+      ch.points(points);
+      ch.ixsLookup(data["pred_ixs"]);
+      ch.onClick((l, r, pixs) => {
+        net.post("ixs_put", "explainer_ixs_put/", {
+          "token": token.value,
+          "pos": 0,
+          "ixs": pixs,
+        }, (_) => {
+          window.open(net.url(d3.select("#nav_ex").attr("href"), {
+            "token": token.value,
+          }), "_self");
+        });
+      });
+      ch.setROCThreshold(bestL, true);
+      ch.setROCThreshold(bestR, false);
+      ch.update();
+      d3.select("#hidden").style({
+        "display": "none",
+      });
+    });
+  });
+
+  function getState() {
+    var s = {
+      "token": token.value,
+    };
+    return s;
+  } // getState
+
+  function setState(state) {
+    prevState = state;
+    token.value = state["token"];
+  } // setState
+
+  var prevState = getState();
+  function pushState() {
+    setTimeout(() => {
+      var state = getState();
+      var same = Object.keys(state).length === Object.keys(prevState)
+              && Object.keys(state).every((k) => k in prevState
+                                          && prevState[k] === state[k]);
+      if(same) return;
+      prevState = state;
+      chory.pushState(state, document.title,
+        net.url(jkjs.util.getOwnURL(), state));
+    }, 100);
+  } // pushState
+
+  window.onpopstate = (event) => event.state && setState(event.state);
+} // start
+</script>
+</body>
+</html>

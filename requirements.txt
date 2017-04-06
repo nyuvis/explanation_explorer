@@ -1,0 +1,7 @@
+numpy>=1.12.0
+quick-server
+quick-cache
+git+https://github.com/JosuaKrause/progress_bar.git
+#git+https://bitbucket.org/pypy/numpy.git
+scipy
+scikit-learn

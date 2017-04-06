@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Explainer</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" type="text/css" href="lib/jk-js/lib/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="lib/font-awesome/css/font-awesome.min.css">
+  <script src="lib/jk-js/lib/d3/d3.min.js" charset="utf-8"></script>
+  <script src="lib/jk-js/jkjs/select.js" charset="utf-8"></script>
+  <script src="lib/jk-js/jkjs/path.js" charset="utf-8"></script>
+  <script src="lib/jk-js/jkjs/cell.js" charset="utf-8"></script>
+  <script src="lib/jk-js/jkjs/text.js" charset="utf-8"></script>
+  <script src="lib/jk-js/jkjs/util.js" charset="utf-8"></script>
+  <script src="js/search.js" charset="utf-8"></script>
+  <script src="js/worker.js" charset="utf-8"></script>
+  <script src="js/bars.js" charset="utf-8"></script>
+  <script src="js/list.js" charset="utf-8"></script>
+  <script src="js/sort.js" charset="utf-8"></script>
+  <script src="js/roc.js" charset="utf-8"></script>
+  <script src="js/ixs.js" charset="utf-8"></script>
+  <script src="js/net.js" charset="utf-8"></script>
+  <style>
+  .axis {
+    shape-rendering: crispEdges;
+  }
+
+  .x.axis, .y.axis {
+    stroke: black;
+    font-weight: 100;
+  }
+
+  .x.axis .minor, .y.axis .minor {
+    stroke-opacity: .5;
+  }
+
+  .x.axis path, .y.axis path {
+    display: none;
+  }
+
+  label {
+    font-weight: normal;
+  }
+
+  .clickable {
+    cursor: pointer;
+  }
+
+  .clickable:hover {
+    background-color: #eee;
+  }
+
+  .elem:hover {
+    background-color: #eee;
+  }
+  </style>
+</head>
+<body onload="start()">
+<nav class="navbar navbar-default">
+  <div class="container-fluid">
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+       <ul class="nav navbar-nav">
+        <li><a href="index.html" id="nav_ov">Overview</a></li>
+        <li class="active"><a href="explainer.html" id="nav_ex">Explanation</a></li>
+        <li><a href="inspector.html" id="nav_in">Inspection</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<div style="display: flex; height: calc(100vh - 72px);">
+  <div style="flex-grow: 0; width: 242px; margin: 0; padding: 5px; display: flex; flex-direction: column;">
+    <div id="search" style="flex-grow: 0; margin-bottom: 5px; width: 100%"></div>
+    <div id="ixslist" style="flex-grow: 1;"></div>
+    <div style="flex-grow: 0; margin-top: 5px;">Filter:</div>
+    <div style="flex-grow: 0; width: 100%; display: flex; margin-bottom: 5px;">
+      <div id="numactive" style="display: inline-flex; flex-grow: 1;"></div>
+      <div id="numkey" style="display: inline-flex;"></div>
+      <div id="numop" style="display: inline-flex; flex-grow: 1;"></div>
+      <div id="numsize" style="display: inline-flex; flex-grow: 2;"></div>
+    </div>
+    <div style="flex-grow: 0;">Order:</div>
+    <div style="flex-grow: 1; flex-shrink: 1; width: 100%; height: 117px; margin-bottom: 5px; overflow: auto;" id="sort"></div>
+  </div>
+  <div style="flex-grow: 1; flex-shrink: 1; margin: 0; padding: 0; display: flex; flex-direction: column; overflow-x: auto;">
+    <div id="expl_head" style="width: 100%; flex-grow: 0;"></div>
+    <div id="expl" style="width: 100%; flex-grow: 1; overflow-y: auto;"></div>
+  </div>
+</div>
+<p id="status" style="position: fixed; left: 5px; bottom: 5px;"></p>
+<script>
+function start() {
+  var urlArgs = jkjs.util.getQueryStrings();
+  var COLOR_LEFT_DARK = "#2166ac";
+  var COLOR_LEFT = "#67a9cf";
+  var COLOR_LEFT_BRIGHT = "#d1e5f0";
+  var COLOR_MID = "white";
+  var COLOR_MID_ALT = "black";
+  var COLOR_RIGHT_DARK = "#b2182b";
+  var COLOR_RIGHT = "#ef8a62";
+  var COLOR_RIGHT_BRIGHT = "#fddbc7";
+  var COLOR_SEL = "khaki";
+  var COLOR_FIX = "forestgreen";
+  var COLOR_TMP = "lightgray";
+  var _fmt = d3.format(".3g");
+  var fmt = (v) => {
+    if(+v !== v) {
+      return "" + v;
+    }
+    if(Math.floor(v) === v) {
+      return "" + v;
+    }
+    if(v <= 0.1) {
+      var t = Math.round(v * 1000.0) / 1000.0;
+      if(t > 0) {
+        return (t + "000").substring(0, 5);
+      }
+      return "0.000";
+    }
+    return _fmt(v);
+  };
+
+  var net = new Net(d3.select("#status"));
+  var work = new quick_server.Worker();
+  work.status((req) => net.otherReq(req));
+
+  var token = new jkjs.Cell(urlArgs["token"] || "");
+  token.addChangeListener(() => {
+    ixsList.token(token.value);
+    ixsList.update();
+    net.post("page_get", "explainer_page_get/", {
+      "token": token.value,
+      "page": "stats",
+    }, (data) => {
+      var sorts = data["sorts"];
+      if(!sorts) return;
+      sortVis.sorts(sorts);
+      sortVis.update();
+      explVis.sorts(sortVis.sorts());
+      update();
+    });
+  });
+
+  function savePage(cb) {
+    net.post("page_set", "explainer_page_put", {
+      "token": token.value,
+      "page": "stats",
+      "put": {
+        "sorts": sortVis.sorts(),
+      },
+    }, (data) => {
+      cb();
+    });
+  } // savePage
+
+  d3.select("#nav_ov").on("click", () => {
+    var e = d3.event;
+    savePage(() => {
+      window.open(net.url(d3.select("#nav_ov").attr("href"), {
+        "token": token.value,
+      }), "_self");
+    });
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  d3.select("#nav_ex").on("click", () => {
+    var e = d3.event;
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  d3.select("#nav_in").on("click", () => {
+    var e = d3.event;
+    savePage(() => {
+      window.open(net.url(d3.select("#nav_in").attr("href"), {
+        "token": token.value,
+      }), "_self");
+    });
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  function clearPage(page, cb) {
+    net.post("clear_set", "explainer_page_clear", {
+      "token": token.value,
+      "page": page,
+    }, (data) => {
+      cb();
+    });
+  } // clearPage
+
+  // *** search ***
+
+  function getSearchTerms(term) {
+    return term.toLowerCase().split(/,/)
+    .map((s) => s.trim())
+    .filter((s) => s.length);
+  } // getSearchTerms
+
+  function hasSearchTerms(s, tts) {
+    return tts.every((tt) => s.indexOf(tt) >= 0);
+  } // hasSearchTerms
+
+  function scoreSearchTerms(s, tts) {
+    return tts.reduce((p, tt) => {
+      var score = 0;
+      var pos = 0;
+      while(true) {
+        pos = s.indexOf(tt, pos);
+        if(pos < 0) {
+          break;
+        }
+        pos += 1;
+        score += 1.0 / pos;
+      }
+      return p + score;
+    }, 0);
+  } // scoreSearchTerms
+
+  var search = new Search(d3.select("#search"), (term) => {
+    var tts = getSearchTerms(term);
+    var pretts = tts.slice(0, term.search(/,\s*$/) >= 0
+               ? tts.length : tts.length - 1);
+    var prett = pretts.length ? pretts.join(",") + "," : "";
+    var af = {};
+    explVis.rows()
+    .filter((e) => hasSearchTerms(e["search"], pretts))
+    .forEach((e) => {
+      e["expl"].forEach((expl) => {
+        var f = expl.toLowerCase();
+        if(pretts.every((t) => t !== f)) {
+          af[prett + f] = true;
+        }
+      });
+    });
+    var absFreq = {};
+    explVis.rows().forEach((e) => {
+      e["expl"].forEach((expl) => {
+        var f = expl.toLowerCase();
+        if(!(f in absFreq)) {
+          absFreq[f] = 0;
+        }
+        absFreq[f] += 1;
+      });
+    });
+    var fs = Object.keys(af).filter((t) => hasSearchTerms(t, tts));
+    fs.sort((a, b) => {
+      var as = scoreSearchTerms(a, tts);
+      var bs = scoreSearchTerms(b, tts);
+      var cmp = d3.descending(as, bs);
+      if(cmp !== 0) return cmp;
+      var cmpF = d3.descending(absFreq[a], absFreq[b]);
+      if(cmpF !== 0) return cmpF;
+      return d3.ascending(a, b);
+    });
+    return fs;
+  });
+  search.onClickSubmit((term) => {
+    var tts = getSearchTerms(term);
+    var es = explVis.rows()
+    .filter((e) => hasSearchTerms(e["search"], tts))
+    .map((e) => e["ix"]);
+    explVis.selectMulti(es);
+    explVis.update();
+  });
+
+  var ixsList = new IxsList(d3.select("#ixslist"), net);
+  ixsList.onClick((pos, isNew) => {
+    if(isNew) {
+      numActive.value = false;
+      explVis.selectMulti([]);
+    }
+    var t = token.value;
+    token.silentSet(null);
+    token.value = t;
+  });
+  ixsList.onCreate(() => {
+    var fs = explVis.rows();
+    var ixs = [];
+    explVis.selectMulti().forEach((fix) => {
+      fs[fix]["ixs"].forEach((ix) => ixs.push(ix));
+    });
+    return ixs;
+  });
+
+  // *** sort ***
+
+  var cols = [
+    [ "count", "total" ],
+    [ "pos_label", "positive" ],
+    [ "neg_label", "negative" ],
+    [ "tp", "true positive" ],
+    [ "fn", "false negative" ],
+    [ "fp", "false positive" ],
+    [ "tn", "true negative" ],
+    [ "incorrect", "incorrect" ],
+    [ "correct", "correct" ],
+    [ "len", "explanation length" ],
+    [ "search", "explanation" ],
+    [ "accuracy", "accuracy" ],
+    [ "precision", "precision" ],
+    [ "uncertainty", "uncertainty" ],
+    [ "or", "odds ratio" ],
+    [ "or_lim_down", "-confidence interval" ],
+    [ "or_lim_up", "+confidence interval" ],
+    [ "or_lim_size", "confidence interval size" ],
+  ];
+
+  var sortVis = new Sort(d3.select("#sort"), (s, ix) => { // onClick
+    if(sortVis.moveUp(s[0])) {
+      sortVis.toggleAsc(s[0]);
+    }
+    sortVis.update();
+    explVis.sorts(sortVis.sorts());
+    update();
+  }, (s) => { // onAscClick
+    sortVis.toggleAsc(s[0]);
+    sortVis.update();
+    explVis.sorts(sortVis.sorts());
+    update();
+  });
+  sortVis.sorts(cols.map((c) => [ c[0], c[1], c[0] === "search" ]));
+  sortVis.update();
+
+  // *** vis ***
+
+  var size = 20;
+  var explVis = new Bars(d3.select("#expl"), d3.select("#expl_head"), size, COLOR_LEFT, COLOR_RIGHT, COLOR_SEL, fmt);
+  explVis.onClick((ix) => {
+    explVis.selectIx(ix);
+    explVis.toggleCurrent();
+    update();
+  });
+  explVis.onInspect((expl) => {
+    savePage(() => {
+      clearPage("compact", () => {
+        net.post("page_set", "explainer_page_put", {
+          "token": token.value,
+          "page": "compact",
+          "put": {
+            "expl": expl["expl"],
+          },
+        }, (data) => {
+          window.open(net.url(d3.select("#nav_in").attr("href"), {
+            "token": token.value,
+          }), "_self");
+        });
+      });
+    });
+  });
+  explVis.sorts(sortVis.sorts());
+
+  // *** filter ***
+
+  // TODO filter by 70% of the data set
+  var numActive = new jkjs.Cell(false);
+  numActive.addChangeListener(() => {
+    var widgets = [
+      numSizeSel,
+      numKeySel,
+      numOpSel,
+    ];
+    if(numActive.value) {
+      widgets.forEach((w) => {
+        w.select().attr({
+          "disabled": null,
+        });
+      });
+    } else {
+      widgets.forEach((w) => {
+        w.select().attr({
+          "disabled": "disabled",
+        });
+      });
+      explVis.selectMulti([]);
+      update();
+    }
+    selectRange();
+  });
+  var numActiveSel = new jkjs.Checkbox(d3.select("#numactive"), numActive);
+  numActiveSel.select().style({
+    "width": "100%",
+    "margin": "auto",
+  });
+  var numSize = new jkjs.Cell(0);
+  numSize.addChangeListener(selectRange);
+  var numKey = new jkjs.Cell(cols[0][0]);
+  numKey.addChangeListener(selectRange);
+  var numOp = new jkjs.Cell(">");
+  numOp.addChangeListener(selectRange);
+  var numSizeSel = new jkjs.Spinner(d3.select("#numsize"), numSize);
+  numSizeSel.range([ 0, 100 ]);
+  numSizeSel.select().style({
+    "width": "100%",
+    "text-align": "right",
+  });
+  var numKeySel = new jkjs.Select(d3.select("#numkey"), numKey);
+  numKeySel.select().style({
+    "width": "100px",
+  });
+  numKeySel.options(cols);
+  var ops = {
+    ">": (num, ref) => num > ref,
+    "=": (num, ref) => num === ref,
+    "<": (num, ref) => num < ref,
+  };
+  var numOpSel = new jkjs.Select(d3.select("#numop"), numOp);
+  numOpSel.options(Object.keys(ops).map((o) => [ o, o ]));
+  numOpSel.select().style({
+    "width": "100%",
+  });
+
+  function selectRange() {
+    if(!numActive.value) return;
+    var op = ops[numOp.value];
+    var ixs = [];
+    var key = numKey.value;
+    if(key) {
+      var size = numSize.value;
+      explVis.rows().forEach((f) => {
+        if(op(f[key], size)) {
+          ixs.push(f["ix"]);
+        }
+      });
+    }
+    explVis.selectMulti(ixs);
+    update();
+  } // selectRange
+
+  // *** update ***
+
+  function update() {
+    explVis.update();
+    pushState();
+  } // update
+
+  net.get("roc", "explainer_roc_curve/?token=" + token.value, (data) => {
+    token.value = data["token"];
+    token.addChangeListener(() => {
+      var totalPoints = +data["total_points"];
+      var bestL = +data["best_l"];
+      var bestR = +data["best_r"];
+      if(Number.isNaN(bestL) || Number.isNaN(bestR)) {
+        throw {
+          "err": "cannot initialize model",
+        };
+      }
+      net.post("expls", "explainer_expls_stats/", {
+        "token": token.value,
+        "l": bestL,
+        "r": bestR,
+      }, (data) => {
+        chooser(data["expls"], data["totals"], data["all"]);
+      });
+    });
+  });
+
+  function getNames(expls) {
+    var ess = expls.map((e) => e["expl"]);
+
+    var maxSeg = 3;
+    var segLen = 3;
+    var maxLen = maxSeg * (segLen + 2);
+    function getName(f) {
+      var segs = f.trim().split(/\s+/);
+      var resSegs = [];
+      var curLen = 0;
+      var pos = 0;
+      while(pos < segs.length) {
+        var isFirst = pos === 0;
+        var cur = (isFirst ? "" : " ") + segs[pos];
+        if(cur.length > maxLen) {
+          cur = cur.slice(0, maxLen - 1) + ".";
+        }
+        if(cur.length + curLen > maxLen) {
+          if(!isFirst) {
+            var prev = resSegs[pos - 1];
+            var prevF = pos === 1 ? 0 : 1;
+            if(prev.length > segLen + 1) {
+              resSegs[pos - 1] = prev.slice(0, prevF + segLen) + ".";
+              curLen += resSegs[pos - 1].length - prev.length;
+            }
+          }
+          if(cur.length + curLen > maxLen) {
+            var newLen = maxLen - curLen;
+            cur = cur.slice(0, Math.max(0, newLen - 1));
+            if(cur.length) {
+              cur += ".";
+            }
+          }
+        }
+        if(cur.length) {
+          resSegs.push(cur);
+          curLen += cur.length;
+        } else {
+          while(pos > 0 && curLen + 2 >= maxLen) {
+            pos -= 1;
+            var rs = resSegs[pos];
+            if(rs.length >= 2) {
+              resSegs[pos] = rs.slice(0, Math.max(rs.length - 2, 0));
+              curLen += resSegs[pos] - rs.length;
+            }
+          }
+          resSegs.push("..");
+          curLen += 2;
+          break;
+        }
+        pos += 1;
+      }
+      pos = resSegs.length;
+      while(curLen < maxLen && pos > 0) {
+        pos -= 1;
+        var os = segs[pos];
+        var rs = resSegs[pos];
+        var isF = pos > 0 ? 1 : 0;
+        if(os.length + isF > rs.length) {
+          curLen -= rs.length;
+          var tmp = (isF ? " " : "") + os;
+          if(curLen + tmp.length === maxLen) {
+            resSegs[pos] = tmp;
+          } else {
+            resSegs[pos] = tmp.slice(0, Math.max(0, maxLen - curLen - 1)) + ".";
+          }
+          curLen += resSegs[pos];
+        }
+      }
+      return resSegs.join("");
+    } // getName
+
+    var fs = {};
+    ess.forEach((es) => {
+      es.forEach((f) => {
+        fs[f] = getName(f);
+      });
+    });
+    var vals = {};
+    Object.keys(fs).forEach((f) => {
+      var sf = fs[f];
+      if(!(sf in vals)) {
+        vals[sf] = [];
+      }
+      vals[sf].push(f);
+    });
+    Object.keys(vals).forEach((v) => {
+      if(vals[v].length <= 1) return;
+      vals[v].forEach((f, ix) => {
+        var s = "." + ix;
+        fs[f] = v.slice(0, Math.max(0, maxLen - s.length)) + s;
+      });
+    });
+
+    return ess.map((es) => {
+      return es.map((f) => {
+        return fs[f] + "\u00a0".repeat(Math.max(0, maxLen - fs[f].length));
+      });
+    });
+  } // getNames
+
+  function chooser(expls, totals, allTotals) {
+    var fields = [
+      "tp", "fn", "fp", "tn", "count", "pos_label",
+      "accuracy", "precision",
+    ];
+    var names = getNames(expls);
+    var arr = expls.map((e, ix) => {
+      var res = {
+        "ix": ix,
+        "search": e["expl"].join(",").toLowerCase(),
+        "title": e["expl"].join(", "),
+        "expl": e["expl"],
+        "names": names[ix],
+        "ixs": e["ixs"],
+      };
+      fields.forEach((k, pos) => {
+        res[k] = +e[k];
+      });
+      return res;
+    });
+    var total = {
+      "ix": -1,
+      "search": "",
+      "title": "total",
+      "expl": [],
+      "names": [],
+      "ixs": [],
+    };
+    fields.forEach((k) => {
+      total[k] = +totals[k];
+    });
+
+    function or(e, t) {
+      var nepos_label = +t["pos_label"] - +e["pos_label"];
+      var necount = +t["count"] - +e["count"];
+
+      function odds(pos, count) {
+        if(count === pos) {
+          return 1.0;
+        }
+        return (pos / count) / ((count - pos) / count);
+      } // odds
+
+      return odds(+e["pos_label"], +e["count"]) / odds(nepos_label, necount);
+    } // or
+
+    function orConf(e, t, up) {
+      var or = extraFields["or"](e, t);
+      var l = Math.log(or);
+      var nepos_label = t["pos_label"] - e["pos_label"];
+      var necount = t["count"] - e["count"];
+      var se = Math.sqrt( // add one for division
+        1.0 / (e["pos_label"] + 1.0)
+      + 1.0 / (e["count"] - e["pos_label"] + 1.0)
+      + 1.0 / (nepos_label + 1.0)
+      + 1.0 / (necount - nepos_label + 1.0)
+      );
+      return up ? Math.exp(l + 1.96*se) : Math.exp(l - 1.96*se);
+    } // orConf
+
+    var extraFields = {
+      "ig": (e, t) => {
+        var nepos_label = +t["pos_label"] - +e["pos_label"];
+        var necount = +t["count"] - +e["count"];
+
+        function plogp(pos, count) {
+          if(pos === 0) {
+            return 0.0;
+          }
+          return -pos / count * Math.log(pos / count);
+        } // plogp
+
+        function entropy(pos, count) {
+          return plogp(pos, count) + plogp(count - pos, count);
+        } // entropy
+
+        return entropy(+t["pos_label"], +t["count"])
+          - +e["count"] / +t["count"] * entropy(+e["pos_label"], +e["count"])
+          - necount / +t["count"] * entropy(nepos_label, necount);
+      },
+      "or": (e, t) => or(e, t),
+      "or_lim_up": (e, t) => orConf(e, t, true),
+      "or_lim_down": (e, t) => orConf(e, t, false),
+      "or_lim_size": (e, t) => Math.abs(Math.log(orConf(e, t, true)) - Math.log(orConf(e, t, false))),
+      "neg_label": (e, t) => +e["count"] - +e["pos_label"],
+      "len": (e, t) => e["expl"].length,
+      "correct": (e, t) => +e["tp"] + +e["tn"],
+      "incorrect": (e, t) => +e["fp"] + +e["fn"],
+      "uncertainty": (e, t) => -Math.abs(Math.log(or(e, t))),
+    };
+    Object.keys(extraFields).forEach((k) => {
+      var fun = extraFields[k];
+      arr.forEach((obj) => {
+        obj[k] = fun(obj, allTotals);
+      });
+      total[k] = fun(total, allTotals);
+    });
+    explVis.total(total);
+    explVis.rows(arr);
+    explVis.colors({
+      "tp": COLOR_LEFT,
+      "fn": "url(#hedge_pattern_right)",
+      "fp": "url(#hedge_pattern_left)",
+      "tn": COLOR_RIGHT,
+      "pos_label": "darkgray",
+      "neg_label": "lightgray",
+    });
+    update();
+  } // chooser
+
+  function getState() {
+    var s = {
+      "token": token.value,
+    };
+    return s;
+  } // getState
+
+  function setState(state) {
+    prevState = state;
+    token.value = state["token"];
+  } // setState
+
+  var prevState = getState();
+  function pushState() {
+    savePage(() => {
+      var state = getState();
+      var same = Object.keys(state).length === Object.keys(prevState)
+              && Object.keys(state).every((k) => k in prevState
+                                          && prevState[k] === state[k]);
+      if(same) return;
+      prevState = state;
+      history.pushState(state, document.title,
+        net.url(jkjs.util.getOwnURL(), state));
+    });
+  } // pushState
+
+  window.onpopstate = (event) => event.state && setState(event.state);
+} // start
+</script>
+</body>
+</html>

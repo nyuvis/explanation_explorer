@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Inspector</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" type="text/css" href="lib/jk-js/lib/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="lib/font-awesome/css/font-awesome.min.css">
+  <script src="lib/jk-js/lib/d3/d3.min.js" charset="utf-8"></script>
+  <script src="lib/jk-js/jkjs/select.js" charset="utf-8"></script>
+  <script src="lib/jk-js/jkjs/path.js" charset="utf-8"></script>
+  <script src="lib/jk-js/jkjs/cell.js" charset="utf-8"></script>
+  <script src="lib/jk-js/jkjs/text.js" charset="utf-8"></script>
+  <script src="lib/jk-js/jkjs/util.js" charset="utf-8"></script>
+  <script src="js/worker.js" charset="utf-8"></script>
+  <script src="js/compact.js" charset="utf-8"></script>
+  <script src="js/list.js" charset="utf-8"></script>
+  <script src="js/sort.js" charset="utf-8"></script>
+  <script src="js/roc.js" charset="utf-8"></script>
+  <script src="js/net.js" charset="utf-8"></script>
+  <style>
+  .axis {
+    shape-rendering: crispEdges;
+  }
+
+  .x.axis, .y.axis {
+    stroke: black;
+    font-weight: 100;
+  }
+
+  .x.axis .minor, .y.axis .minor {
+    stroke-opacity: .5;
+  }
+
+  .x.axis path, .y.axis path {
+    display: none;
+  }
+
+  label {
+    font-weight: normal;
+  }
+
+  .clickable {
+    cursor: pointer;
+  }
+
+  .clickable:hover {
+    background-color: #eee;
+  }
+
+  .elem:hover {
+    background-color: #eee;
+  }
+  </style>
+</head>
+<body onload="start()">
+<nav class="navbar navbar-default">
+  <div class="container-fluid">
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav">
+        <li><a href="index.html" id="nav_ov">Overview</a></li>
+        <li><a href="explainer.html" id="nav_ex">Explanation</a></li>
+        <li class="active"><a href="inspector.html" id="nav_in">Inspection</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<div style="display: flex;">
+  <div style="flex-grow: 0; width: 242px; height: calc(100vh - 72px); margin: 0; padding: 5px; display: flex; flex-direction: column;">
+    <div style="flex-grow: 0;" id="all_features"></div>
+    <div style="flex-grow: 0;">Row Order:</div>
+    <div style="flex-grow: 1; flex-shrink: 1; flex-basis: 90%; width: 100%; overflow-y: auto; overflow-x: hidden;" id="rsort"></div>
+    <div style="flex-grow: 0; margin-top: 5px;">Feature Order:</div>
+    <div style="flex-grow: 1; flex-shrink: 1; flex-basis: 30%; width: 100%; overflow-y: auto;" id="fsort"></div>
+  </div>
+  <div style="flex-grow: 0; width: calc(100vw - 242px); margin: 0; padding: 0;">
+    <div style="height: calc(100vh - 72px); overflow-x: auto; padding: 0; margin: 0; display: flex; flex-direction: column;">
+      <div id="expl_head" style="flex-grow: 0; padding: 0; margin: 0;"></div>
+      <div id="expl" style="flex-grow: 1; flex-shrink: 1;overflow-y: auto; overflow-x: hidden; padding: 0; margin: 0;"></div>
+      <div id="message" style="position: absolute; padding: 5px; margin-top: 5px;"></div>
+    </div>
+  </div>
+</div>
+<p id="status" style="position: fixed; left: 5px; bottom: 5px;"></p>
+<script>
+function start() {
+  var urlArgs = jkjs.util.getQueryStrings();
+  var COLOR_LEFT_DARK = "#2166ac";
+  var COLOR_LEFT = "#67a9cf";
+  var COLOR_LEFT_BRIGHT = "#d1e5f0";
+  var COLOR_MID = "white";
+  var COLOR_MID_ALT = "black";
+  var COLOR_RIGHT_DARK = "#b2182b";
+  var COLOR_RIGHT = "#ef8a62";
+  var COLOR_RIGHT_BRIGHT = "#fddbc7";
+  var COLOR_SEL = "khaki";
+  var COLOR_FIX = "forestgreen";
+  var COLOR_TMP = "lightgray";
+  var _fmt = d3.format(".3g");
+  var fmt = (v) => {
+    if(+v !== v) {
+      return "" + v;
+    }
+    if(Math.floor(v) === v) {
+      return "" + v;
+    }
+    if(v <= 0.1) {
+      var t = Math.round(v * 1000.0) / 1000.0;
+      if(t > 0) {
+        return (t + "000").substring(0, 5);
+      }
+      return "0.000";
+    }
+    return _fmt(v);
+  };
+
+  var net = new Net(d3.select("#status"));
+  var work = new quick_server.Worker();
+  work.status((req) => net.otherReq(req));
+
+  var token = new jkjs.Cell(urlArgs["token"] || "");
+
+  var read = false;
+  function savePage(cb) {
+    if(!read) {
+      cb();
+      return;
+    }
+    net.post("page_set", "explainer_page_put", {
+      "token": token.value,
+      "page": "compact",
+      "put": {
+        "rsorts": rSort.sorts(),
+        "fsorts": fSort.sorts(),
+        "expl": curExpl.value,
+        "all_features": allFeatures.value,
+      },
+    }, (data) => {
+      cb();
+    });
+  } // savePage
+
+  d3.select("#nav_ov").on("click", () => {
+    var e = d3.event;
+    savePage(() => {
+      window.open(net.url(d3.select("#nav_ov").attr("href"), {
+        "token": token.value,
+      }), "_self");
+    });
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  d3.select("#nav_ex").on("click", () => {
+    var e = d3.event;
+    savePage(() => {
+      window.open(net.url(d3.select("#nav_ex").attr("href"), {
+        "token": token.value,
+      }), "_self");
+    });
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  d3.select("#nav_in").on("click", () => {
+    var e = d3.event;
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  // *** allFeatures ***
+
+  var allFeatures = new jkjs.Cell(false);
+  var afSel = new jkjs.Checkbox(d3.select("#all_features"), allFeatures, "Show all features:", false);
+
+  // *** rSorts ***
+
+  var rSortsFun = {};
+  function setRSorts() {
+    compactVis.rSorts(rSort.sorts().map((s) => [ s[0], s[1], s[2], rSortsFun[s[0]] ]));
+  } // setRSorts
+
+  var rSort = new Sort(d3.select("#rsort"), (s, ix) => { // onClick
+    if(rSort.moveUp(s[0])) {
+      rSort.toggleAsc(s[0]);
+    }
+    rSort.update();
+    setRSorts();
+    update();
+  }, (s) => { // onAscClick
+    rSort.toggleAsc(s[0]);
+    rSort.update();
+    setRSorts();
+    update();
+  });
+
+  // *** fSorts ***
+
+  var fSortsFun = {};
+  function setFSorts() {
+    compactVis.fSorts(fSort.sorts().map((s) => [ s[0], s[1], s[2], fSortsFun[s[0]] ]));
+  } // setFSorts
+
+  var fSort = new Sort(d3.select("#fsort"), (s, ix) => { // onClick
+    if(fSort.moveUp(s[0])) {
+      fSort.toggleAsc(s[0]);
+    }
+    fSort.update();
+    setFSorts();
+    update();
+  }, (s) => { // onAscClick
+    fSort.toggleAsc(s[0]);
+    fSort.update();
+    setFSorts();
+    update();
+  });
+
+  // *** vis ***
+
+  var size = 17;
+  var compactVis = new Compact(d3.select("#expl"), d3.select("#expl_head"), size, [ COLOR_FIX, COLOR_SEL, COLOR_LEFT, COLOR_RIGHT ], fmt);
+  compactVis.compact(true);
+  compactVis.onClick((rix, row, fix, f) => {
+    if(f["id"] === "_label") {
+      if(rSort.moveUp("pred")) {
+        rSort.toggleAsc("pred");
+      }
+    } else {
+      if(rSort.moveUp("feature_" + f["id"])) {
+        rSort.toggleAsc("feature_" + f["id"]);
+      }
+    }
+    rSort.update();
+    setRSorts();
+    update();
+  });
+  compactVis.onHover((rix, row, fix, f) =>
+    compactVis.highlight(rix, f && f["id"])
+  );
+
+  var curExpl = new jkjs.Cell([]);
+  curExpl.equalFunction((a, b) =>
+    a.length === b.length && a.every((v, ix) => v === b[ix])
+  );
+
+  function update() {
+    compactVis.update();
+    pushState();
+  } // update
+
+  net.get("roc", "explainer_roc_curve/?token=" + token.value, (data) => {
+    token.value = data["token"];
+    var explChg = null;
+    var afChg = null;
+    token.addChangeListener(() => {
+      var totalPoints = +data["total_points"];
+      var bestL = +data["best_l"];
+      var bestR = +data["best_r"];
+      if(Number.isNaN(bestL) || Number.isNaN(bestR)) {
+        throw {
+          "err": "cannot initialize model",
+        };
+      }
+      read = false;
+      net.post("page_get", "explainer_page_get/", {
+        "token": token.value,
+        "page": "compact",
+      }, (data) => {
+        var rsorts = data["rsorts"];
+        var fsorts = data["fsorts"];
+        if(data["expl"]) {
+          curExpl.value = data["expl"];
+        }
+        if(data["all_features"]) {
+          allFeatures.value = data["all_features"];
+        }
+        read = true;
+        if(explChg) {
+          curExpl.removeChangeListener(explChg);
+        }
+        if(afChg) {
+          allFeatures.removeChangeListener(afChg);
+        }
+        explChg = () => chooser(curExpl.value, bestL, bestR, totalPoints, rsorts, fsorts, allFeatures.value);
+        afChg = () => savePage(explChg);
+        curExpl.addChangeListener(explChg);
+        allFeatures.addChangeListener(afChg);
+      });
+    });
+  });
+
+  function chooser(expl, bestL, bestR, totalPoints, rsorts, fsorts, af) {
+    if(expl.length === 0) {
+      d3.select("#message").text("No explanation selected!");
+      return;
+    }
+    d3.select("#message").text("");
+    net.post("counts", "explainer_granular/", {
+      "token": token.value,
+      "l": bestL,
+      "r": bestR,
+      "expl": expl,
+      "partial": false,
+      "ignore_irrelevant_features": !af,
+    }, (data) => {
+      var importances = data["importances"];
+      var conf = {};
+      var rows = [];
+      var groups = data["groups"].map((d) => {
+        var rixs = [];
+        var stats = d["stats"];
+        Object.keys(stats).forEach((s) => {
+          if(stats[s] <= 0) return;
+          rixs.push(rows.length);
+          rows.push({
+            "count": +stats[s],
+            "label": s,
+            "features": {},
+          });
+          if(!(s in conf)) {
+            conf[s] = 0;
+          }
+          conf[s] += +stats[s];
+        });
+        return rixs;
+      });
+      var fs = data["features"].map((f) => {
+        var sum = 0;
+        var fname = f["feature"];
+        if(fname === "_label") {
+          fname = "label";
+        }
+        var inExpl = f["in_expl"];
+        f["groups"].forEach((gix) => {
+          groups[gix].forEach((rix) => {
+            rows[rix]["features"][fname] = true;
+            sum += rows[rix]["count"];
+          });
+        });
+        return {
+          "id": fname,
+          "text": fname,
+          "title": fname + (inExpl ? "*" : "") + " (" + fmt(sum) + ")",
+          "sum": sum,
+          "in_expl": inExpl,
+          "importance": importances[fname],
+        };
+      });
+      fs.sort((a, b) => d3.descending(a["sum"], b["sum"]));
+
+      rSortsFun = {
+        "count": (r) => r[0]["count"],
+        "pred": (r) => r[0]["label"][1] === "p" ? 1 : 0,
+        "label": (r) => r[0]["label"] === "tp" || r[0]["label"] === "fn" ? 1 : 0,
+        "correct": (r) => r[0]["label"][0] === "t" ? 1 : 0,
+        "features": (r) => r[1].reduce((p, f) =>
+          p + (f["id"] in r[0]["features"] ? "z" : "a")
+        , ""),
+      };
+      var rSorts = [
+        [ "features", "features" ],
+        [ "label", "ground truth" ],
+        [ "pred", "prediction" ],
+        [ "correct", "correctness" ],
+        [ "count", "count" ],
+      ];
+      rSort.sorts(rSorts.map((c) => [ c[0], c[1], false ]));
+      if(rsorts) {
+        rSort.sorts(rsorts);
+      }
+      rSort.update();
+      setRSorts();
+
+      fSortsFun = {
+        "in_expl": (f) => f["in_expl"] ? 1 : 0,
+        "freq": (f) => f["sum"],
+        "name": (f) => f["text"],
+        "importance": (f) => f["importance"],
+      };
+      fSort.sorts([
+        [ "importance", "relative feature importance" ],
+        [ "in_expl", "explanation" ],
+        [ "freq", "frequency" ],
+        [ "name", "name" ],
+      ].map((c) => [ c[0], c[1], c[0] === "name" ]));
+      if(fsorts) {
+        fSort.sorts(fsorts);
+      }
+      fSort.update();
+      setFSorts();
+
+      fs.unshift({
+        "id": "_label",
+        "text": "prediction",
+        "title": "prediction\n" + [
+          "tp", "fp", "fn", "tn",
+        ].map(
+          (s) => s + ": " + fmt(conf[s])
+        ).join("\n"),
+        "sum": 0,
+        "in_expl": false,
+        "importance": 0,
+      });
+
+      compactVis.clearSpecialColor();
+      var colorMap = {
+        "tp": COLOR_LEFT,
+        "fp": "url(#hedge_pattern_left)",
+        "fn": "url(#hedge_pattern_right)",
+        "tn": COLOR_RIGHT,
+      };
+      compactVis.addSpecialColor("_label", (rix, row, fix, f) =>
+        row["label"] in colorMap ? colorMap[row["label"]] : "purple"
+      );
+      compactVis.features(fs);
+      compactVis.rows(rows);
+      update();
+    });
+  } // chooser
+
+  function getState() {
+    var s = {
+      "token": token.value,
+    };
+    return s;
+  } // getState
+
+  function setState(state) {
+    prevState = state;
+    token.value = state["token"];
+  } // setState
+
+  var prevState = getState();
+  function pushState() {
+    savePage(() => {
+      var state = getState();
+      var same = Object.keys(state).length === Object.keys(prevState)
+              && Object.keys(state).every((k) => k in prevState
+                                          && prevState[k] === state[k]);
+      if(same) return;
+      prevState = state;
+      history.pushState(state, document.title,
+        net.url(jkjs.util.getOwnURL(), state));
+    });
+  } // pushState
+
+  window.onpopstate = (event) => event.state && setState(event.state);
+} // start
+</script>
+</body>
+</html>

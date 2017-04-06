@@ -1,0 +1,6 @@
+.DS_Store
+/.cmd_history
+*.json
+*.csv
+/tmp/
+*.pyc

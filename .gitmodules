@@ -1,0 +1,4 @@
+[submodule "lib/jk-js"]
+	path = lib/jk-js
+	url = https://github.com/JosuaKrause/jk-js.git
+  pushurl = git@github.com:JosuaKrause/jk-js.git
