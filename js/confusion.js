@@ -7,45 +7,11 @@ function Confusion(sel, colors, noUncertain, fontSize, padding) {
   var COLOR_RIGHT = colors[1];
   var uncertain = !noUncertain;
 
-  function getPattern(color) {
-    var s = 10;
-    var svgNode = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svgNode.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns", "http://www.w3.org/2000/svg");
-    svgNode.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:xlink", "http://www.w3.org/1999/xlink");
-    var svg = d3.select(svgNode).attr({
-      "width": s,
-      "height": s,
-    }).style({
-      "width": s + "px",
-      "height": s + "px",
-      "overflow": "hidden",
-    });
-    svg.append("rect").attr({
-      "x": 0,
-      "y": 0,
-      "width": s,
-      "height": s,
-      "fill": color,
-      "stroke": "none",
-    });
-    svg.append("path").attr({
-      "fill": "none",
-      "stroke": "black",
-      "stroke-width": 0.5,
-      "stroke-linecap": "square",
-      "d": new jkjs.Path().move(0, s * 0.25).line(s * 0.25, 0)
-                          .move(0, s * 0.75).line(s * 0.75, 0)
-                          .move(s * 0.25, s).line(s, s * 0.25)
-                          .move(s * 0.75, s).line(s, s * 0.75),
-    });
-    return "url(\"data:image/svg+xml;base64,"
-      + window.btoa(svg.node().outerHTML)
-      + "\")";
-  } // getPattern
-  var hedgeLeft = getPattern(COLOR_LEFT);
-  var hedgeRight = getPattern(COLOR_RIGHT);
+  var pattern = new PatternGenerator(COLOR_LEFT, COLOR_RIGHT);
+  var hedgeLeft = pattern.getPatternURL(COLOR_LEFT);
+  var hedgeRight = pattern.getPatternURL(COLOR_RIGHT);
 
-  var textShadow = "0 0 10px white, 0 0 10px white";
+  var textShadow = pattern.getShadow("white", 10, 2);
 
   var mainTable = sel.append("table").style({
     "border-collapse": "collapse",

@@ -7,58 +7,14 @@ function Bars(sel, selHead, size, leftColor, rightColor, selectColor, fmt) {
   var svg = sel.append("svg");
   var svgHead = selHead.append("svg");
 
-  function addPatterns(root) {
-    var defs = root.append("defs");
-    var s = 10;
-    [
-      [ "hedge_pattern_left", leftColor ],
-      [ "hedge_pattern_right", rightColor ],
-    ].forEach((arr) => {
-      var id = arr[0];
-      var color = arr[1];
-      var hedge = defs.append("pattern").attr({
-        "id": id,
-        "x": 0,
-        "y": 0,
-        "width": s,
-        "height": s,
-        "patternUnits": "userSpaceOnUse",
-      });
-      hedge.append("rect").attr({
-        "x": 0,
-        "y": 0,
-        "width": s,
-        "height": s,
-        "fill": color,
-        "stroke": "none",
-      });
-      hedge.append("path").attr({
-        "fill": "none",
-        "stroke": "black",
-        "stroke-width": 0.5,
-        "stroke-linecap": "square",
-        "d": new jkjs.Path().move(0, s * 0.25).line(s * 0.25, 0)
-                            .move(0, s * 0.75).line(s * 0.75, 0)
-                            .move(s * 0.25, s).line(s, s * 0.25)
-                            .move(s * 0.75, s).line(s, s * 0.75),
-      });
-    });
-  } // addPatterns
-  addPatterns(svg);
-  addPatterns(svgHead);
+  var pattern = new PatternGenerator(leftColor, rightColor);
+  pattern.setPosColors("darkgray", "lightgray");
+  pattern.addPatterns(svg);
+  pattern.addPatterns(svgHead);
 
-  function getShadow(color, radius, times) {
-    var c = color;
-    if(c === "url(#hedge_pattern_left)") {
-      c = leftColor;
-    }
-    if(c === "url(#hedge_pattern_right)") {
-      c = rightColor;
-    }
-    return [...Array(times)].map(() => "0 0 " + radius + "px " + c).join(",");
-  } // getShadow
+  var textShadow = pattern.getShadow("white", 10, 2);
 
-  var textShadow = getShadow("white", 10, 2);
+  pattern.addLegend(sel);
 
   var rows = [];
   this.rows = function(_) {

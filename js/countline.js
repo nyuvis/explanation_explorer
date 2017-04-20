@@ -11,45 +11,8 @@ function CountLine(sel, sizeW, sizeH, border, onROCThreshold, scoreTmp, fmt, col
   var COLOR_LEFT_DARK = colors[3];
   var COLOR_RIGHT_DARK = colors[4];
 
-  function addPatterns(root) {
-    var defs = root.append("defs");
-    var s = 10;
-    [
-      [ "hedge_pattern_left", COLOR_LEFT ],
-      [ "hedge_pattern_right", COLOR_RIGHT ],
-      [ "hedge_pattern_left_dark", COLOR_LEFT_DARK ],
-      [ "hedge_pattern_right_dark", COLOR_RIGHT_DARK ],
-    ].forEach((arr) => {
-      var id = arr[0];
-      var color = arr[1];
-      var hedge = defs.append("pattern").attr({
-        "id": id,
-        "x": 0,
-        "y": 0,
-        "width": s,
-        "height": s,
-        "patternUnits": "userSpaceOnUse",
-      });
-      hedge.append("rect").attr({
-        "x": 0,
-        "y": 0,
-        "width": s,
-        "height": s,
-        "fill": color,
-        "stroke": "none",
-      });
-      hedge.append("path").attr({
-        "fill": "none",
-        "stroke": "black",
-        "stroke-width": 0.5,
-        "stroke-linecap": "square",
-        "d": new jkjs.Path().move(0, s * 0.25).line(s * 0.25, 0)
-                            .move(0, s * 0.75).line(s * 0.75, 0)
-                            .move(s * 0.25, s).line(s, s * 0.25)
-                            .move(s * 0.75, s).line(s, s * 0.75),
-      });
-    });
-  } // addPatterns
+  var pattern = new PatternGenerator(COLOR_LEFT, COLOR_RIGHT);
+  pattern.setDarkColors(COLOR_LEFT_DARK, COLOR_RIGHT_DARK);
 
   var points = [];
   this.points = function(_) {
@@ -177,7 +140,7 @@ function CountLine(sel, sizeW, sizeH, border, onROCThreshold, scoreTmp, fmt, col
       d3.event.preventDefault();
     });
   } // interactive
-  addPatterns(svg);
+  pattern.addPatterns(svg);
 
   function mousePos() {
     return d3.mouse(svg.node());

@@ -7,45 +7,11 @@ function Compact(sel, selHead, size, colors, fmt) {
   var svg = sel.append("svg");
   var svgHead = selHead.append("svg");
 
-  function addPatterns(root) {
-    var defs = root.append("defs");
-    var s = size * 0.5;
-    [
-      [ "hedge_pattern_left", colors[2] ],
-      [ "hedge_pattern_right", colors[3] ],
-    ].forEach((arr) => {
-      var id = arr[0];
-      var color = arr[1];
-      var hedge = defs.append("pattern").attr({
-        "id": id,
-        "x": 0,
-        "y": 0,
-        "width": s,
-        "height": s,
-        "patternUnits": "userSpaceOnUse",
-      });
-      hedge.append("rect").attr({
-        "x": 0,
-        "y": 0,
-        "width": s,
-        "height": s,
-        "fill": color,
-        "stroke": "none",
-      });
-      hedge.append("path").attr({
-        "fill": "none",
-        "stroke": "black",
-        "stroke-width": 0.5,
-        "stroke-linecap": "square",
-        "d": new jkjs.Path().move(0, s * 0.25).line(s * 0.25, 0)
-                            .move(0, s * 0.75).line(s * 0.75, 0)
-                            .move(s * 0.25, s).line(s, s * 0.25)
-                            .move(s * 0.75, s).line(s, s * 0.75),
-      });
-    });
-  } // addPatterns
-  addPatterns(svg);
-  addPatterns(svgHead);
+  var pattern = new PatternGenerator(colors[2], colors[3]);
+  pattern.addPatterns(svg);
+  pattern.addPatterns(svgHead);
+
+  pattern.addLegend(sel);
 
   var textShadow = "0 0 10px white, 0 0 10px white";
 
