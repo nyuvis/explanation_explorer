@@ -25,13 +25,14 @@ function IxsList(sel, net) {
     });
   };
 
-  this.chooseIxs = function(ixs, cb) {
+  this.chooseIxs = function(ixs, msg, cb) {
     if(ixs.length === 0) {
       return;
     }
     net.post("ixs_put", "explainer_ixs_put/", {
       "token": token,
       "ixs": ixs,
+      "msg": msg,
     }, function(data) {
       ixsList = data;
       cb(ixsList.length - 1, true);
@@ -53,6 +54,14 @@ function IxsList(sel, net) {
   this.onCreate = function(_) {
     if(!arguments.length) return onCreate;
     onCreate = _;
+  };
+
+  var onMsg = function() {
+    return null;
+  };
+  this.onMsg = function(_) {
+    if(!arguments.length) return onMsg;
+    onMsg = _;
   };
 
   this.update = function() {
@@ -89,7 +98,7 @@ function IxsList(sel, net) {
       return pos < 0 ? "+" : ixsList[pos];
     }).on("click", function(pos) {
       if(pos < 0) {
-        that.chooseIxs(onCreate(), onClick);
+        that.chooseIxs(onCreate(), onMsg(), onClick);
       } else {
         that.choosePos(pos, onClick);
       }

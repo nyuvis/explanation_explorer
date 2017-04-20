@@ -84,6 +84,7 @@ def get_server(addr, port, explainer_obj, cache):
         obj = server.get_token_obj(token)
         if "ixss" not in obj:
             obj["ixss"] = [ canonic_ixs(explainer_obj.get_all_ixs()) ]
+            obj["msgs"] = [ "all: " + str(len(obj["ixss"][-1])) ]
         return obj
 
     token_lock = threading.Lock()
@@ -96,7 +97,7 @@ def get_server(addr, port, explainer_obj, cache):
         with token_lock:
             args = args["post"]
             obj = token_obj(args)
-            return [ len(ixs) for ixs in obj["ixss"] ]
+            return [ msg for msg in obj["msgs"] ]
 
     @server.json_post(prefix + '/explainer_ixs_put', 0)
     def json_explainer_ixs_put(req, args):
@@ -104,6 +105,8 @@ def get_server(addr, port, explainer_obj, cache):
             args = args["post"]
             if "ixs" in args:
                 new_ixs = canonic_ixs(args["ixs"])
+                pre_text = args["msg"] + ": " if "msg" in args and args["msg"] else ""
+                new_text = pre_text + str(len(new_ixs))
             else:
                 new_ixs = None
             if "pos" in args:
@@ -113,6 +116,7 @@ def get_server(addr, port, explainer_obj, cache):
             obj = token_obj(args)
             if new_pos is not None:
                 obj["ixss"] = obj["ixss"][:(new_pos + 1)]
+                obj["msgs"] = obj["msgs"][:(new_pos + 1)]
             if new_ixs is not None:
                 ixss = obj["ixss"]
                 found = None
@@ -125,9 +129,11 @@ def get_server(addr, port, explainer_obj, cache):
                             break
                 if found is not None:
                     obj["ixss"] = obj["ixss"][:found]
+                    obj["msgs"] = obj["msgs"][:found]
                 else:
                     obj["ixss"].append(new_ixs)
-            return [ len(ixs) for ixs in obj["ixss"] ]
+                    obj["msgs"].append(new_text)
+            return [ msg for msg in obj["msgs"] ]
 
     @server.json_post(prefix + '/explainer_page_get', 0)
     def json_explainer_page_get(req, args):

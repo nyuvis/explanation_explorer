@@ -259,18 +259,32 @@ function start() {
     .filter((e) => hasSearchTerms(e["search"], tts))
     .map((e) => e["ix"]);
     explVis.selectMulti(es);
+    updateMsg(term);
     explVis.update();
   });
+
+  var ixsMsg = "manual";
+  function updateMsg(msg) {
+    if(ixsMsg === "manual") {
+      ixsMsg = msg;
+    } else {
+      ixsMsg = "manual";
+    }
+  } // updateMsg
 
   var ixsList = new IxsList(d3.select("#ixslist"), net);
   ixsList.onClick((pos, isNew) => {
     if(isNew) {
       numActive.value = false;
       explVis.selectMulti([]);
+      ixsMsg = "manual";
     }
     var t = token.value;
     token.silentSet(null);
     token.value = t;
+  });
+  ixsList.onMsg(() => {
+    return ixsMsg;
   });
   ixsList.onCreate(() => {
     var fs = explVis.rows();
@@ -327,6 +341,7 @@ function start() {
   explVis.onClick((ix) => {
     explVis.selectIx(ix);
     explVis.toggleCurrent();
+    updateMsg("manual");
     update();
   });
   explVis.onInspect((expl) => {
@@ -420,6 +435,9 @@ function start() {
           ixs.push(f["ix"]);
         }
       });
+      updateMsg(key + " " + numOp.value + " " + size);
+    } else {
+      updateMsg("manual");
     }
     explVis.selectMulti(ixs);
     update();
