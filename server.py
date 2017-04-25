@@ -234,6 +234,10 @@ if __name__ == '__main__':
     addr = args.a
     port = args.p
     heroku = args.heroku
+
+    if heroku:
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
     cache_quota = args.quota
     ram_quota = args.ram_quota
     explainer_file = args.explainer
