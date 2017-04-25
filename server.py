@@ -34,7 +34,7 @@ def get_server(addr, port, explainer_obj, cache):
     if heroku:
         server.no_command_loop = True
         server.bind_path('/', '.')
-        prefix = ''
+        prefix = '/projects/expl/'
     else:
         server.bind_path('/', '..')
         prefix = '/' + os.path.basename(os.path.normpath(server.base_path))
