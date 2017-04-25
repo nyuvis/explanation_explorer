@@ -247,8 +247,6 @@ if __name__ == '__main__':
     cid = args.input + ":" + explainer_file
     cache = QuickCache(None, cid, quota=cache_quota, ram_quota=ram_quota, temp=cache_temp, warnings=msg)
 
-    if heroku:
-        QuickServerRequestHandler.protocol_version = "HTTP/1.0"
     explainer_obj = explainer.Explainer(explainer_file, args.input, sample, cache, msg)
     server, prefix = get_server(addr, port, explainer_obj, cache)
     msg("{0}", " ".join(sys.argv))
