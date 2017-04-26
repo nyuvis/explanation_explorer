@@ -1,6 +1,6 @@
-# explanation_explorer
+# Explainer
 
-Explanation explorer is a visual interface to explore similarly explained data items.
+Explainer is a visual interface to explore similarly explained data items.
 Having a trained machine learning model it is possible to create explanations for
 data items by probing model inputs (not yet part of this repository).
 The visual analytics interface groups similar explanations together and provides
