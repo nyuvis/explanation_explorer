@@ -203,8 +203,8 @@ function start() {
       ch.onClick((l, r, pixs) => {
         net.post("ixs_put", "explainer_ixs_put/", {
           "token": token.value,
-          "pos": 0,
           "ixs": pixs,
+          "msg": "score in [" + fmt(l) + ", " + fmt(r) + ")",
         }, (_) => {
           window.open(net.url(d3.select("#nav_ex").attr("href"), {
             "token": token.value,
