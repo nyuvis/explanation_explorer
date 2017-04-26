@@ -7,6 +7,8 @@ The visual analytics interface groups similar explanations together and provides
 an interactive way of exploring the significants and quantity of those explanations
 in a given data set, i.e., a validation data set.
 
+![Overview of Explainer](explainer.png)
+
 ## Getting started
 
 The project consists of a `python 2.7` server with a web front-end.
