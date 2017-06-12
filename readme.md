@@ -37,10 +37,44 @@ The input data and the explanation description.
 
 The input data has to be a CSV file representing a binary data matrix.
 The first row contains the column names.
-There are two special columns
+There is one special columns
 `label` (containing the ground truth label `0` or `1`) and
+the file should only contain rows of the validation data set.
+
+The explanation description is a JSON file of the following format:
+
+```javascript
+{
+  "test_auc": 0.85, // area under ROC curve for the explained set
+  "train_auc": 0.9, // area under ROC curve for the training set
+  "total_rows": 135, // number of rows in the input data that belong to the explained set (used for integrity check)
+  "total_true": 71, // number of rows with a `1` label in the input data that belong to the explained set (used for integrity check)
+  "threshold": 0.6, // the optimal threshold minimizing incorrectly predicted training instances
+  "features": [ "foo", "bar", ... ], // names of the features corresponding to the input data
+  "expls": [ // array of explanations for each data item in order of the ixs array
+    {
+      "ix": 0, // the index of the current item starting at 0
+      "label": 0, // the ground truth label 0 or 1
+      "pred": 0.1, // prediction score
+      "pred_label": 0, // the predicted label 0 or 1 using the threshold from above (used for integrity check)
+      "expl": [ // the explanation
+        [ 12, 0.09 ], // one step: feature index in features array, new prediction score
+        // ...
+      ],
+    },
+    // ...
+  ],
+}
+```
+
+### Older formats
+
+Using `--protocol 0` as additional command line argument enables using the legacy
+format.
+Here, the CSV file has an additional column
 `pred` (containing the prediction score of the current row between `0.0` and `1.0`).
-Ideally, the file should contain both rows of the training data set (optional) and validation data set (needed).
+Also, ideally, the file should contain both rows of the training
+data set (optional) and validation data set (needed).
 
 The explanation description is a JSON file of the following format:
 

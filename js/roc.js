@@ -60,12 +60,13 @@ function ROC(sel, setting, size, border, onROCThreshold, scoreTmp, fmt, colors) 
   function getPointForScore(score) {
     if(Number.isNaN(score)) return null;
     var p = null;
-    points.some(function(cp) {
-      if(+cp["score"] === +score) {
+    var closest = Number.POSITIVE_INFINITY;
+    points.forEach((cp) => {
+      var dist = Math.abs(+cp["score"] - +score)
+      if(dist < closest) {
         p = cp;
-        return true;
+        closest = dist;
       }
-      return false;
     });
     return p;
   }

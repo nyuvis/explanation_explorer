@@ -221,6 +221,7 @@ if __name__ == '__main__':
         sys.exit(1)
     parser = argparse.ArgumentParser(description='Class Signature Server')
     parser.add_argument('-v', action='store_true', help="print library versions and exit")
+    parser.add_argument('--protocol', type=int, default=1, help="the explanation protocol version")
     parser.add_argument('--sample', type=float, default=1.0, help="samples data points for explainer")
     parser.add_argument('--heroku', action='store_true', help="start in heroku mode")
     parser.add_argument('--quota', default=10240, help="set cache quota")
@@ -242,6 +243,7 @@ if __name__ == '__main__':
     ram_quota = args.ram_quota
     explainer_file = args.explainer
     sample = args.sample
+    protocol = args.protocol
 
     cache_temp = "tmp"
     if os.path.exists("cache_path.txt"):
@@ -251,7 +253,7 @@ if __name__ == '__main__':
     cid = args.input + ":" + explainer_file
     cache = QuickCache(None, cid, quota=cache_quota, ram_quota=ram_quota, temp=cache_temp, warnings=msg)
 
-    explainer_obj = explainer.Explainer(explainer_file, args.input, sample, cache, msg)
+    explainer_obj = explainer.Explainer(explainer_file, args.input, sample, cache, msg, protocol)
     server, prefix = get_server(addr, port, explainer_obj, cache)
     msg("{0}", " ".join(sys.argv))
     msg("starting server at http://{0}:{1}{2}/", addr if addr else 'localhost', port, prefix)
