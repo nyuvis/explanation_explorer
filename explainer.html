@@ -265,11 +265,7 @@ function start() {
 
   var ixsMsg = "manual";
   function updateMsg(msg) {
-    if(ixsMsg === "manual") {
-      ixsMsg = msg;
-    } else {
-      ixsMsg = "manual";
-    }
+    ixsMsg = msg;
   } // updateMsg
 
   var ixsList = new IxsList(d3.select("#ixslist"), net);
@@ -277,7 +273,7 @@ function start() {
     if(isNew) {
       numActive.value = false;
       explVis.selectMulti([]);
-      ixsMsg = "manual";
+      updateMsg("manual");
     }
     var t = token.value;
     token.silentSet(null);
