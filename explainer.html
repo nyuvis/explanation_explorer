@@ -478,13 +478,21 @@ function start() {
     var segLen = 3;
     var maxLen = maxSeg * (segLen + 2);
     function getName(f) {
-      var segs = f.trim().split(/\s+/);
+      var sprex = /\s+|[-=;]/g
+      var binds = f.trim().match(sprex);
+      if(binds) {
+        binds = binds.map((b) => b.replace(/\s+/, ' '));
+        binds.splice(0, 0, "");
+      } else {
+        binds = [ "" ];
+      }
+      var segs = f.trim().split(sprex);
       var resSegs = [];
       var curLen = 0;
       var pos = 0;
       while(pos < segs.length) {
         var isFirst = pos === 0;
-        var cur = (isFirst ? "" : " ") + segs[pos];
+        var cur = binds[pos] + segs[pos];
         if(cur.length > maxLen) {
           cur = cur.slice(0, maxLen - 1) + ".";
         }
@@ -531,7 +539,7 @@ function start() {
         var isF = pos > 0 ? 1 : 0;
         if(os.length + isF > rs.length) {
           curLen -= rs.length;
-          var tmp = (isF ? " " : "") + os;
+          var tmp = binds[pos] + os;
           if(curLen + tmp.length === maxLen) {
             resSegs[pos] = tmp;
           } else {
