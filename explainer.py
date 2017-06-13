@@ -239,7 +239,7 @@ class _DataMatrix_v0(object):
 
 
 class _DataMatrix_v1(object):
-    def __init__(self, csvfile, features, cache, msg):
+    def __init__(self, csvfile, features, expls, cache, msg):
         with cache.get_hnd({
                     "function": "dmv1",
                     "csv": csvfile,
@@ -258,7 +258,7 @@ class _DataMatrix_v1(object):
         self._diffs = diffs
 
 
-    def _load(self, data_file, features, msg):
+    def _load(self, data_file, features, expls, msg):
         load_time = time.clock()
         msg("loading data..")
         skip = frozenset([ "label" ])
@@ -314,7 +314,9 @@ class _DataMatrix_v1(object):
         matrix = matrix.tocsr()
         matrix.sort_indices()
 
-        labels = np.array(labels, dtype=np.bool)
+        for (pos, l) in enumerate(labels):
+            if expls[pos]["label"] != l:
+                raise ValueError("inconsistent label at index {0}".format(pos))
 
         msg("loading data took {0}s", time.clock() - load_time)
         return matrix, mins, diffs
@@ -493,11 +495,13 @@ class Explainer(object):
 
         if E_WARN_COUNT > 1:
             msg("there were {0} warnings!", E_WARN_COUNT)
+        actual_pos = sum( 1 for l in self._get_labels(self._ixs)[0] if l == "T" )
+        if actual_pos != int(obj["total_true"]):
+            raise ValueError("inconsistent positive labels {0} != {1}".format(actual_pos, obj["total_true"]))
 
         msg("loading explanations took {0}s", time.clock() - expl_time)
-        dm = _DataMatrix_v1(csvfile, features, cache, msg)
+        dm = _DataMatrix_v1(csvfile, features, self._expls, cache, msg)
         self._dm = dm
-        # TODO total_true integrity check
 
 
     def _get_pred_label(self, pred, score):
