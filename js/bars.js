@@ -104,6 +104,39 @@ function Bars(sel, selHead, size, leftColor, rightColor, selectColor, fmt) {
     onInspect = _;
   };
 
+  var textBlocks = 3;
+  this.textBlocks = function(_) {
+    if(!arguments.length) return textBlocks;
+    textBlocks = _;
+  };
+
+  var margin = 5;
+  var wsize = size * 2;
+  var barHeight = size;
+  var pBarSize = size * 5;
+  var sBarSize = size * 5;
+  var hsize = size;
+  var headH = hsize * 2;
+  var central = hsize * 0.7;
+  var fontSize = hsize * 0.6;
+  var textGap = fontSize * 3;
+  var orBarSize = size * 5;
+  var itSize = fontSize * 3;
+  var textBlockSize = fontSize * 11;
+  this.textBlockSize = function(_) {
+    if(!arguments.length) return textBlockSize;
+    textBlockSize = _;
+  };
+  this.calculateTextBlockSize = function(characters) {
+    return fontSize * 11.0 * characters / 15.0;
+  };
+  this.getTextSize = function(textBlockSize, textBlocks) {
+    return textBlockSize * textBlocks + textGap;
+  };
+  this.getRealWidth = function(textSize) {
+    return textSize + pBarSize + sBarSize + 4 * margin + orBarSize + itSize;
+  };
+
   this.update = () => {
     var ixs = rows.map((_, ix) => ix);
     ixs.sort((aix, bix) => {
@@ -124,22 +157,8 @@ function Bars(sel, selHead, size, leftColor, rightColor, selectColor, fmt) {
     });
     var pos = ixs.map((_, p) => p);
 
-    var margin = 5;
-    var wsize = size * 2;
-    var barHeight = size;
-    var pBarSize = size * 5;
-    var sBarSize = size * 5;
-    var hsize = size;
-    var fontSize = hsize * 0.6;
-    var headH = hsize * 2;
-    var central = hsize * 0.7;
-    var textBlocks = 3;
-    var textBlockSize = fontSize * 11;
-    var textGap = fontSize * 3;
-    var textSize = textBlockSize * textBlocks + textGap;
-    var orBarSize = size * 5;
-    var itSize = fontSize * 3;
-    var rw = textSize + pBarSize + sBarSize + 4 * margin + orBarSize + itSize;
+    var textSize = that.getTextSize(textBlockSize, textBlocks);
+    var rw = that.getRealWidth(textSize);
     var rh = hsize * ixs.length + 2;
     svg.style({
       "width": (rw + 2) + "px",
@@ -500,7 +519,7 @@ function Bars(sel, selHead, size, leftColor, rightColor, selectColor, fmt) {
       });
 
       function getFName(id) {
-        var names = get(id[0])["names"];
+        var names = get(id[0])["names"]();
         if(id[1] === 0) {
           var diff = names.length - textBlocks;
           if(diff > 0) {

@@ -337,7 +337,8 @@ function start() {
   // *** vis ***
 
   var size = 20;
-  var explVis = new Bars(d3.select("#expl"), d3.select("#expl_head"), size, COLOR_LEFT, COLOR_RIGHT, COLOR_SEL, fmt);
+  var explSel = d3.select("#expl");
+  var explVis = new Bars(explSel, d3.select("#expl_head"), size, COLOR_LEFT, COLOR_RIGHT, COLOR_SEL, fmt);
   explVis.onClick((ix) => {
     explVis.selectIx(ix);
     explVis.toggleCurrent();
@@ -471,14 +472,16 @@ function start() {
     });
   });
 
-  function getNames(expls) {
+  function getMaxNameLength(maxSeg, segLen) {
+    return maxSeg * (segLen + 2);
+  } // getMaxNameLength
+
+  var sprex = /\s+|[-=;]/g;
+  function getNames(expls, maxSeg, segLen) {
     var ess = expls.map((e) => e["expl"]);
 
-    var maxSeg = 3;
-    var segLen = 3;
-    var maxLen = maxSeg * (segLen + 2);
+    var maxLen = getMaxNameLength(maxSeg, segLen);
     function getName(f) {
-      var sprex = /\s+|[-=;]/g
       var binds = f.trim().match(sprex);
       if(binds) {
         binds = binds.map((b) => b.replace(/\s+/, ' '));
@@ -580,32 +583,112 @@ function start() {
     });
   } // getNames
 
+  var curNames = [];
+  var curExpls = [];
+  var maxTextBlocks = 0;
+  var maxFullNameLength = 0;
+  var maxFullSegLen = 0;
+  var startMaxSeg = 3;
+  var startSegLen = 3;
+  var startTextBlocks = 3;
+  var lastCurWidth = 0;
+  var lastMaxWidth = Number.POSITIVE_INFINITY;
+  function updateNamesAndColumns() {
+    var maxSeg = startMaxSeg;
+    var segLen = startSegLen;
+    var textBlocks = startTextBlocks;
+    var maxWidth = explSel.node().clientWidth;
+
+    function mnl() {
+      return getMaxNameLength(maxSeg, segLen);
+    } // mnl
+
+    function getCurrentWidth() {
+      var tbs = explVis.calculateTextBlockSize(mnl());
+      var ts = explVis.getTextSize(tbs, textBlocks);
+      return explVis.getRealWidth(ts) + 150;
+    } // getCurrentWidth
+
+    if(maxWidth > getCurrentWidth()) {
+      var prevMaxSeg;
+      var prevSegLen;
+      var prevTextBlocks;
+      var end = false;
+      while(!end && maxWidth > getCurrentWidth()) {
+        prevMaxSeg = maxSeg;
+        prevSegLen = segLen;
+        prevTextBlocks = textBlocks;
+        textBlocks += 1;
+        if(maxWidth <= getCurrentWidth()) {
+          var before = mnl() * 1.0;
+          segLen += 1;
+          var after = mnl() * 1.0;
+          textBlocks = Math.max(Math.floor(textBlocks * before / after), startTextBlocks);
+        }
+        if(textBlocks > maxTextBlocks) {
+          textBlocks = startTextBlocks;
+          segLen += 1;
+        }
+        if(segLen > maxFullSegLen || mnl() > maxFullNameLength) {
+          segLen = startSegLen;
+          maxSeg += 1;
+          if(mnl() > maxFullNameLength) {
+            end = true;
+          }
+        }
+      }
+      maxSeg = prevMaxSeg;
+      segLen = prevSegLen;
+      textBlocks = prevTextBlocks;
+    }
+    lastCurWidth = getCurrentWidth();
+    lastMaxWidth = maxWidth;
+    explVis.textBlocks(textBlocks);
+    explVis.textBlockSize(
+      explVis.calculateTextBlockSize(
+        getMaxNameLength(maxSeg, segLen)
+      )
+    );
+    curNames = getNames(curExpls, maxSeg, segLen);
+  } // updateNamesAndColumns
+
   function chooser(expls, totals, allTotals) {
     var fields = [
       "tp", "fn", "fp", "tn", "count", "pos_label",
       "accuracy", "precision",
     ];
-    var names = getNames(expls);
+    curExpls = expls;
+    maxTextBlocks = startTextBlocks;
+    maxFullNameLength = getMaxNameLength(startMaxSeg, startSegLen);
+    maxFullSegLen = startSegLen;
     var arr = expls.map((e, ix) => {
       var res = {
         "ix": ix,
         "search": e["expl"].join(",").toLowerCase(),
         "title": e["expl"].join(", "),
         "expl": e["expl"],
-        "names": names[ix],
+        "names": () => curNames[ix],
         "ixs": e["ixs"],
       };
+      maxTextBlocks = Math.max(maxTextBlocks, e["expl"].length);
+      maxFullNameLength = e["expl"].reduce((p, c) =>
+        Math.max(p, c.length), maxFullNameLength);
+      maxFullSegLen = e["expl"].reduce((p, c) =>
+        Math.max(p, c.trim().split(sprex).reduce((pp, cc) =>
+          Math.max(pp, cc.length), 0
+        ) + 1), maxFullSegLen);
       fields.forEach((k, pos) => {
         res[k] = +e[k];
       });
       return res;
     });
+    updateNamesAndColumns();
     var total = {
       "ix": -1,
       "search": "",
       "title": "total",
       "expl": [],
-      "names": [],
+      "names": () => [],
       "ixs": [],
     };
     fields.forEach((k) => {
@@ -717,6 +800,22 @@ function start() {
   } // pushState
 
   window.onpopstate = (event) => event.state && setState(event.state);
+
+  var resizeTimer = 0;
+  window.onresize = () => {
+    resizeTimer += 1;
+    var curResizeTimer = resizeTimer;
+    setTimeout(() => {
+      if(curResizeTimer !== resizeTimer) {
+        return;
+      }
+      var maxWidth = explSel.node().clientWidth;
+      if(maxWidth > lastMaxWidth || maxWidth < lastCurWidth) {
+        updateNamesAndColumns();
+        update();
+      }
+    }, 400);
+  };
 } // start
 </script>
 </body>
