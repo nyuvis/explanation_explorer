@@ -594,9 +594,10 @@ function start() {
   var lastCurWidth = 0;
   var lastMaxWidth = Number.POSITIVE_INFINITY;
   function updateNamesAndColumns() {
+    var stb = Math.min(startTextBlocks, maxTextBlocks);
     var maxSeg = startMaxSeg;
     var segLen = startSegLen;
-    var textBlocks = startTextBlocks;
+    var textBlocks = stb;
     var maxWidth = explSel.node().clientWidth;
 
     function mnl() {
@@ -623,10 +624,10 @@ function start() {
           var before = mnl() * 1.0;
           segLen += 1;
           var after = mnl() * 1.0;
-          textBlocks = Math.max(Math.floor(textBlocks * before / after), startTextBlocks);
+          textBlocks = Math.max(Math.floor(textBlocks * before / after), stb);
         }
         if(textBlocks > maxTextBlocks) {
-          textBlocks = startTextBlocks;
+          textBlocks = stb;
           segLen += 1;
         }
         if(segLen > maxFullSegLen || mnl() > maxFullNameLength) {
@@ -658,7 +659,7 @@ function start() {
       "accuracy", "precision",
     ];
     curExpls = expls;
-    maxTextBlocks = startTextBlocks;
+    maxTextBlocks = 0;
     maxFullNameLength = getMaxNameLength(startMaxSeg, startSegLen);
     maxFullSegLen = startSegLen;
     var arr = expls.map((e, ix) => {
