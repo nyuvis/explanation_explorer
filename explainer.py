@@ -67,7 +67,7 @@ class _Explanation_v1(object):
         ex = [ pred ]
 
         def check(e):
-            p = np.float64(e[1])
+            p = np.float64(e[2])
             if up:
                 if p < pred:
                     raise ValueError("inconsistent up explanation {0} < {1}".format(p, pred))
@@ -78,7 +78,7 @@ class _Explanation_v1(object):
             return e
 
         self._th = th
-        self._expl = [ features[check(e)[0]] for e in expl["expl"] ]
+        self._expl = [ "{0}{1}".format(features[check(e)[0]], e[1]) for e in expl["expl"] ]
         if (ex[0] >= th) != up:
             if E_WARN_COUNT < 10:
                 msg("WARNING: expl for {0} is not full!", expl["ix"])
@@ -251,7 +251,7 @@ class _DataMatrix_v1(object):
                 matrix, mins, diffs = c.read()
                 msg("loading matrix from cache took {0}s", time.clock() - load_time)
             else:
-                matrix, mins, diffs = c.write(self._load(csvfile, features, msg))
+                matrix, mins, diffs = c.write(self._load(csvfile, features, expls, msg))
         self._features = features
         self._matrix = matrix
         self._mins = mins
