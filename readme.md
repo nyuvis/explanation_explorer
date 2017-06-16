@@ -58,7 +58,13 @@ The explanation description is a JSON file of the following format:
       "pred": 0.1, // prediction score
       "pred_label": 0, // the predicted label 0 or 1 using the threshold from above (used for integrity check)
       "expl": [ // the explanation
-        [ 12, "=1", 0.09 ], // one step: feature index in features array, string that gets added to the feature name, and new prediction score
+        [ 12, 0.09 ], // one step: feature index in features array, new prediction score
+        // ...
+      ],
+      "postfixes": [ // postfixes to put after feature names -- corresponds to the features array
+        "=[0, 10)",
+        "=5",
+        "", // empty string if no postfix should be added
         // ...
       ],
     },

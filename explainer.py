@@ -60,14 +60,14 @@ class _Explanation_v0(object):
 
 E_WARN_COUNT = 0
 class _Explanation_v1(object):
-    def __init__(self, expl, features, th, msg):
+    def __init__(self, expl, features, postfixes, th, msg):
         global E_WARN_COUNT
         pred = np.float64(expl["pred"])
         up = not (pred >= th)
         ex = [ pred ]
 
         def check(e):
-            p = np.float64(e[2])
+            p = np.float64(e[1])
             if up:
                 if p < pred:
                     raise ValueError("inconsistent up explanation {0} < {1}".format(p, pred))
@@ -78,7 +78,7 @@ class _Explanation_v1(object):
             return e
 
         self._th = th
-        self._expl = [ "{0}{1}".format(features[check(e)[0]], e[1]) for e in expl["expl"] ]
+        self._expl = [ "{0}{1}".format(features[check(e)[0]], postfixes[e[0]]) for e in expl["expl"] ]
         if (ex[0] >= th) != up:
             if E_WARN_COUNT < 10:
                 msg("WARNING: expl for {0} is not full!", expl["ix"])
@@ -86,6 +86,8 @@ class _Explanation_v1(object):
                 msg("...")
             E_WARN_COUNT += 1
             self._expl = []
+        if len(self._expl) == 0:
+            self._expl = [ "{0}{1}".format(f, postfixes[ix]) for (ix, f) in enumerate(features) ]
 
 
     def get_explanation(self, score):
@@ -391,6 +393,8 @@ class Explainer(object):
             self._load_protocol_1(explfile, csvfile, sample, cache, msg)
         else:
             raise ValueError("unsupported protocol {0}".format(protocol))
+        self._expl_time = os.path.getmtime(explfile)
+        self._csv_time = os.path.getmtime(csvfile)
         self._cache = cache
 
 
@@ -488,7 +492,7 @@ class Explainer(object):
 
         self._expls = [ {
             "ix": int(e["ix"]),
-            "expl": _Explanation_v1(e, features, th, msg),
+            "expl": _Explanation_v1(e, features, e["postfixes"], th, msg),
             "label": int(e["label"]) > 0,
             "pred": np.float64(e["pred"]),
         } for e in expls ]
@@ -665,6 +669,8 @@ class Explainer(object):
                     "score": score,
                     "expl": expl,
                     "partial": partial,
+                    "csv_time": self._csv_time,
+                    "expl_time": self._expl_time,
                 }, "explainer") as c:
             if c.has():
                 return c.read()
@@ -678,6 +684,8 @@ class Explainer(object):
                     "function": "all_expl",
                     "ixs": ixs,
                     "score": score,
+                    "csv_time": self._csv_time,
+                    "expl_time": self._expl_time,
                 }, "explainer") as c:
             if c.has():
                 return c.read()
@@ -695,6 +703,8 @@ class Explainer(object):
                     "function": "conf",
                     "ixs": ixs,
                     "score": score,
+                    "csv_time": self._csv_time,
+                    "expl_time": self._expl_time,
                 }, "explainer") as c:
             if c.has():
                 return c.read()
@@ -761,6 +771,8 @@ class Explainer(object):
                     "function": "roc",
                     "ixs": ixs,
                     "tixs": self._train_ixs,
+                    "csv_time": self._csv_time,
+                    "expl_time": self._expl_time,
                 }, "explainer") as c:
             if c.has():
                 return c.read()
