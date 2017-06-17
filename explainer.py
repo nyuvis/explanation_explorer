@@ -87,7 +87,7 @@ class _Explanation_v1(object):
             E_WARN_COUNT += 1
             self._expl = []
         if len(self._expl) == 0:
-            self._expl = [ "{0}{1}".format(f, postfixes[ix]) for (ix, f) in enumerate(features) ]
+            self._expl = [ "{0}{1}".format(f, postfixes[ix]) for (ix, f) in enumerate(features) if postfixes[ix] is not None ]
 
 
     def get_explanation(self, score):

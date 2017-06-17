@@ -65,6 +65,7 @@ The explanation description is a JSON file of the following format:
         "=[0, 10)",
         "=5",
         "", // empty string if no postfix should be added
+        None, // ignore feature when listing
         // ...
       ],
     },
