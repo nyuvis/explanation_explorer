@@ -58,34 +58,16 @@ class _Explanation_v0(object):
         return convert(*get_e())
 
 
-E_WARN_COUNT = 0
 class _Explanation_v1(object):
     def __init__(self, expl, features, postfixes, th, msg):
-        global E_WARN_COUNT
-        pred = np.float64(expl["pred"])
-        up = not (pred >= th)
-        ex = [ pred ]
-
-        def check(e):
-            p = np.float64(e[1])
-            if up:
-                if p < pred:
-                    raise ValueError("inconsistent up explanation {0} < {1}".format(p, pred))
-            else:
-                if p > pred:
-                    raise ValueError("inconsistent down explanation {0} > {1}".format(p, pred))
-            ex[0] = p
-            return e
-
         self._th = th
-        self._expl = [ "{0}{1}".format(features[check(e)[0]], postfixes[e[0]]) for e in expl["expl"] ]
-        if (ex[0] >= th) != up:
-            if E_WARN_COUNT < 10:
-                msg("WARNING: expl for {0} is not full!", expl["ix"])
-            if E_WARN_COUNT == 10:
-                msg("...")
-            E_WARN_COUNT += 1
-            self._expl = []
+
+        def get_feature(fix):
+            if fix < 0:
+                return ""
+            return features[fix]
+
+        self._expl = [ "{0}{1}{2}".format(e[1], get_feature(e[0]), postfixes[e[0]]) for e in expl["expl"] ]
         if len(self._expl) == 0:
             self._expl = [ "{0}{1}".format(f, postfixes[ix]) for (ix, f) in enumerate(features) if postfixes[ix] is not None ]
 
@@ -497,8 +479,6 @@ class Explainer(object):
             "pred": np.float64(e["pred"]),
         } for e in expls ]
 
-        if E_WARN_COUNT > 1:
-            msg("there were {0} warnings!", E_WARN_COUNT)
         actual_pos = sum( 1 for l in self._get_labels(self._ixs)[0] if l == "T" )
         if actual_pos != int(obj["total_true"]):
             raise ValueError("inconsistent positive labels {0} != {1}".format(actual_pos, obj["total_true"]))
