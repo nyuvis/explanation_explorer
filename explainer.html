@@ -493,14 +493,14 @@ function start() {
         var isFirst = pos === 0;
         var cur = binds[pos] + segs[pos];
         if(cur.length > maxLen) {
-          cur = cur.slice(0, maxLen - 1) + ".";
+          cur = cur.slice(0, maxLen - 1) + "\u2026";
         }
         if(cur.length + curLen > maxLen) {
           if(!isFirst) {
             var prev = resSegs[pos - 1];
             var prevF = pos === 1 ? 0 : 1;
             if(prev.length > segLen + 1) {
-              resSegs[pos - 1] = prev.slice(0, prevF + segLen) + ".";
+              resSegs[pos - 1] = prev.slice(0, prevF + segLen) + "\u2026";
               curLen += resSegs[pos - 1].length - prev.length;
             }
           }
@@ -508,7 +508,7 @@ function start() {
             var newLen = maxLen - curLen;
             cur = cur.slice(0, Math.max(0, newLen - 1));
             if(cur.length) {
-              cur += ".";
+              cur += "\u2026";
             }
           }
         }
@@ -524,7 +524,7 @@ function start() {
               curLen += resSegs[pos] - rs.length;
             }
           }
-          resSegs.push("..");
+          resSegs.push("\u2026");
           curLen += 2;
           break;
         }
@@ -542,12 +542,20 @@ function start() {
           if(curLen + tmp.length === maxLen) {
             resSegs[pos] = tmp;
           } else {
-            resSegs[pos] = tmp.slice(0, Math.max(0, maxLen - curLen - 1)) + ".";
+            resSegs[pos] = tmp.slice(0, Math.max(0, maxLen - curLen - 1)) + "\u2026";
           }
           curLen += resSegs[pos];
         }
       }
-      return resSegs.join("");
+      var res = resSegs.join("");
+      if(res.match("^\u2026*$")) {
+        if(f.trim().length > maxLen) {
+          res = f.trim().slice(0, maxLen - 1) + "\u2026";
+        } else {
+          res = f.trim();
+        }
+      }
+      return res;
     } // getName
 
     var fs = {};
@@ -567,7 +575,7 @@ function start() {
     Object.keys(vals).forEach((v) => {
       if(vals[v].length <= 1) return;
       vals[v].forEach((f, ix) => {
-        var s = "." + ix;
+        var s = "\u2026" + ix;
         fs[f] = v.slice(0, Math.max(0, maxLen - s.length)) + s;
       });
     });
