@@ -11,10 +11,8 @@ in a given data set, i.e., a validation data set.
 
 ## Publications
 
-[A Workflow for Visual Diagnostics of Binary Classifiers using Instance-Level Explanations](https://arxiv.org/abs/1705.01968)
-
-Josua Krause, Aritra Dasgupta, Jordan Swartz, Yindalon Aphinyanaphongs, Enrico Bertini
-
+[A Workflow for Visual Diagnostics of Binary Classifiers using Instance-Level Explanations](https://arxiv.org/abs/1705.01968);
+Josua Krause, Aritra Dasgupta, Jordan Swartz, Yindalon Aphinyanaphongs, Enrico Bertini;
 To be published at IEEE VAST 2017.
 
 ## Getting started
