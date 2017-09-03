@@ -83,22 +83,21 @@ class ExplanationGenerator(object):
 
 
 class LIME(ExplanationGenerator):
-    def __init__(self, batch_size=100, start_radius=1e-2, step=1.8, explanation_length=10):
+    def __init__(self, batch_size=100, start_radius=1e-2, step=1.8, weight_th=1.0):
         ExplanationGenerator.__init__(self)
         self._bs = batch_size
         self._sr = start_radius
         self._ss = step
-        self._el = explanation_length
+        self._wt = weight_th
         self._warn_low_auc = None
 
     def get_explanation(self, model, row, label, rix):
         rng = np.random.RandomState(rix)
         s_rows, s_labels = self._sample(model, row, label, rng)
         res = self._sample_model(s_rows, s_labels, rng)
-        length = self._el
-        ixs = np.argsort(res).tolist()[:length]
+        ixs = np.argsort(-np.abs(res)).tolist()
         prefixs = [ "-", " ", "+" ]
-        return [ [ ix, prefixs[int(np.sign(res[ix]) + 1)] ] for ix in ixs ]
+        return [ [ ix, prefixs[int(np.sign(res[ix]) + 1)] ] for ix in ixs if np.abs(res[ix]) >= self._wt ]
 
     def _sample(self, model, row, own_label, rng):
         bs = self._bs
