@@ -17,7 +17,7 @@ To be published at IEEE VAST 2017.
 
 ## Getting started
 
-The project consists of a `python 2.7` server with a web front-end.
+The project consists of a `python` server with a web front-end.
 To get started clone the repository and run:
 
 ```bash

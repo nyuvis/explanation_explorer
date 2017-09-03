@@ -1,6 +1,6 @@
 numpy>=1.12.0
-quick-server
-quick-cache
+quick_server
+quick_cache
 progressor
 #git+https://bitbucket.org/pypy/numpy.git
 scipy
