@@ -110,7 +110,7 @@ class LIME(ExplanationGenerator):
                 for rix in range(mat.shape[0]):
                     for cix in range(mat.shape[1]):
                         if rng.uniform() < r:
-                            mat[rix, cix] = rng.choice([ 0, 1 ])
+                            mat[rix, cix] = rng.choice([ False, True ])
 
             return sample
 
