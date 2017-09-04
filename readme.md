@@ -51,7 +51,7 @@ file in the current folder) which contains the definition of `YourModel` which
 is a subclass of `defs.Model`. `output` is the folder where the two output
 files (the input to `./server.py`) are written to.
 
-`./create_explanations.py` uses the [LIME algorithm](https://arxiv.org/abs/1602.04938) by default.
+`./create_explanations.py` uses an adaption of the [LIME algorithm](https://arxiv.org/abs/1602.04938) by default.
 
 `example.py` contains an example implementation for a categorical dataset
 (whether mushrooms are edible given certain physical features)
