@@ -700,18 +700,28 @@ function start() {
       total[k] = +totals[k];
     });
 
+    var totalCount = Math.exp(-Math.floor(Math.log(+totals["count"])));
+    function div(a, b) {
+      if(b < 0) return -div(a, -b);
+      // we limit the extend of the odds ratio here
+      // to keep the labels in check
+      return Math.max(a / Math.max(b, totalCount), totalCount);
+    } // div
+
+    function approxDiv(a, b) {
+      if(!b) return a;
+      return a / b;
+    } // approxDiv
+
     function or(e, t) {
       var nepos_label = +t["pos_label"] - +e["pos_label"];
       var necount = +t["count"] - +e["count"];
 
       function odds(pos, count) {
-        if(count === pos) {
-          return 1.0;
-        }
-        return (pos / count) / ((count - pos) / count);
+        return div(div(pos, count), div(count - pos, count));
       } // odds
 
-      return odds(+e["pos_label"], +e["count"]) / odds(nepos_label, necount);
+      return div(odds(+e["pos_label"], +e["count"]), odds(nepos_label, necount));
     } // or
 
     function orConf(e, t, up) {
@@ -719,11 +729,11 @@ function start() {
       var l = Math.log(or);
       var nepos_label = t["pos_label"] - e["pos_label"];
       var necount = t["count"] - e["count"];
-      var se = Math.sqrt( // add one for division
-        1.0 / (e["pos_label"] + 1.0)
-      + 1.0 / (e["count"] - e["pos_label"] + 1.0)
-      + 1.0 / (nepos_label + 1.0)
-      + 1.0 / (necount - nepos_label + 1.0)
+      var se = Math.sqrt(
+        approxDiv(1.0, e["pos_label"])
+      + approxDiv(1.0, e["count"] - e["pos_label"])
+      + approxDiv(1.0, nepos_label)
+      + approxDiv(1.0, necount - nepos_label)
       );
       return up ? Math.exp(l + 1.96*se) : Math.exp(l - 1.96*se);
     } // orConf

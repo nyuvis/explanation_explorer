@@ -639,8 +639,16 @@ function Bars(sel, selHead, size, leftColor, rightColor, selectColor, fmt) {
       });
 
       if(head) {
+        var showTicks;
+        if(ticks.length > 3) {
+          showTicks = [ ticks[1], 1.0, ticks[ticks.length - 2] ];
+        } else if(ticks.length > 1) {
+          showTicks = ticks.slice();
+        } else {
+          showTicks = [ 1.0 ];
+        }
         var nhTT = nhSel.selectAll("g.orticks").selectAll("text.orticks").data(
-          ticks.map((tick) => tick), (tick) => tick
+          showTicks, (tick) => tick
         );
         nhTT.exit().remove();
         nhTT.enter().append("text").classed("orticks", true);

@@ -87,11 +87,41 @@ class ExplanationGenerator(object):
 
 
 class LIME(ExplanationGenerator):
-    def __init__(self, batch_size=100, start_radius=1e-2, step=1.8, weight_th=1.0):
+    def __init__(self, batch_size=100, start_radius=1e-2, step=1.2, weight_th=1.8):
+        """Creates a LIME explanation generator.
+        ( https://arxiv.org/abs/1602.04938 -- some minor modifications)
+
+        Parameters:
+        -----------
+        batch_size : int
+            The number of samples created for a given sample radius. The batches
+            add up until `batch_size / 2` examples of the opposite label are
+            found.
+
+        start_radius : float
+            The initial radius for sampling.
+
+        step : float
+            The multiplier that increases the radius every batch. Note that
+            1.0 might let the algorithm hang. Smaller numbers increase
+            computation time.
+
+        weight_th : float
+            The weight threshold to include features in the explanation.
+            Larger values shorten explanations.
+        """
         ExplanationGenerator.__init__(self)
+        if batch_size < 10:
+            raise ValueError("batch_size too small: {0}".format(batch_size))
         self._bs = batch_size
+        if start_radius <= 0.0:
+            raise ValueError("start_radius must be positive: {0}".format(start_radius))
         self._sr = start_radius
+        if step < 1.0:
+            raise ValueError("invalid radius step {0}".format(step))
         self._ss = step
+        if weight_th < 0.0:
+            raise ValueError("weight_th must be non-negative: {0}".format(weight_th))
         self._wt = weight_th
         self._warn_low_auc = None
 

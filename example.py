@@ -302,4 +302,4 @@ class ExampleModel(Model):
         return self._model.predict_proba(X)[:, self._cix]
 
     def create_explainer(self):
-        return LIME(weight_th=3.0)
+        return LIME(step=1.1, weight_th=2.1)
