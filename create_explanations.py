@@ -22,6 +22,9 @@ if __name__ == '__main__':
 
     name = args.name
     model = load(args.module, name)
+    print("train AUC: {0}".format(model.train_auc()))
+    print("test AUC: {0}".format(model.test_auc()))
+    print("test matrix shape: {0}".format(model.shape()))
     name = name.lower()
     expl = model.create_explainer()
     expl_name = expl.__class__.__name__.lower()

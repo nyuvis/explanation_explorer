@@ -100,7 +100,7 @@ class LIME(ExplanationGenerator):
         s_rows, s_labels = self._sample(sampler, model, row, label, rng)
         res = self._sample_model(s_rows, s_labels, rng)
         ixs = np.argsort(-np.abs(res)).tolist()
-        prefixs = [ "-", " ", "+" ]
+        prefixs = [ "↓", " ", "↑" ]
         return [ [ ix, prefixs[int(np.sign(res[ix]) + 1)] ] for ix in ixs if np.abs(res[ix]) >= self._wt ]
 
     def create_sampler(self, model):

@@ -12,43 +12,205 @@ from defs import Model
 from lime import LIME
 
 
+CLASSES = {
+    "p": False,
+    "e": True,
+}
+VALUES = [
+    {
+        "b": "bell",
+        "c": "conical",
+        "x": "convex",
+        "f": "flat",
+        "k": "knobbed",
+        "s": "sunken",
+    }, {
+        "f": "fibrous",
+        "g": "grooves",
+        "y": "scaly",
+        "s": "smooth",
+    }, {
+        "n": "brown",
+        "b": "buff",
+        "c": "cinnamon",
+        "g": "gray",
+        "r": "green",
+        "p": "pink",
+        "u": "purple",
+        "e": "red",
+        "w": "white",
+        "y": "yellow",
+    }, {
+        "t": "yes",
+        "f": "no",
+    }, {
+        "a": "almond",
+        "l": "anise",
+        "c": "creosote",
+        "y": "fishy",
+        "f": "foul",
+        "m": "musty",
+        "n": "none",
+        "p": "pungent",
+        "s": "spicy",
+    }, {
+        "a": "attached",
+        "d": "descending",
+        "f": "free",
+        "n": "notched",
+    }, {
+        "c": "close",
+        "w": "crowded",
+        "d": "distant",
+    }, {
+        "b": "broad",
+        "n": "narrow",
+    }, {
+        "k": "black",
+        "n": "brown",
+        "b": "buff",
+        "h": "chocolate",
+        "g": "gray",
+        "r": "green",
+        "o": "orange",
+        "p": "pink",
+        "u": "purple",
+        "e": "red",
+        "w": "white",
+        "y": "yellow",
+    }, {
+        "e": "enlarging",
+        "t": "tapering",
+    }, {
+        "b": "bulbous",
+        "c": "club",
+        "u": "cup",
+        "e": "equal",
+        "z": "rhizomorphs",
+        "r": "rooted",
+    }, {
+        "f": "fibrous",
+        "y": "scaly",
+        "k": "silky",
+        "s": "smooth",
+    }, {
+        "f": "fibrous",
+        "y": "scaly",
+        "k": "silky",
+        "s": "smooth",
+    }, {
+        "n": "brown",
+        "b": "buff",
+        "c": "cinnamon",
+        "g": "gray",
+        "o": "orange",
+        "p": "pink",
+        "e": "red",
+        "w": "white",
+        "y": "yellow",
+    }, {
+        "n": "brown",
+        "b": "buff",
+        "c": "cinnamon",
+        "g": "gray",
+        "o": "orange",
+        "p": "pink",
+        "e": "red",
+        "w": "white",
+        "y": "yellow",
+    }, {
+        "p": "partial",
+        "u": "universal",
+    }, {
+        "n": "brown",
+        "o": "orange",
+        "w": "white",
+        "y": "yellow",
+    }, {
+        "n": "none",
+        "o": "one",
+        "t": "two",
+    }, {
+        "c": "cobwebby",
+        "e": "evanescent",
+        "f": "flaring",
+        "l": "large",
+        "n": "none",
+        "p": "pendant",
+        "s": "sheathing",
+        "z": "zone",
+    }, {
+        "k": "black",
+        "n": "brown",
+        "b": "buff",
+        "h": "chocolate",
+        "r": "green",
+        "o": "orange",
+        "u": "purple",
+        "w": "white",
+        "y": "yellow",
+    }, {
+        "a": "abundant",
+        "c": "clustered",
+        "n": "numerous",
+        "s": "scattered",
+        "v": "several",
+        "y": "solitary",
+    }, {
+        "g": "grasses",
+        "l": "leaves",
+        "m": "meadows",
+        "p": "paths",
+        "u": "urban",
+        "w": "waste",
+        "d": "woods",
+    },
+]
+FEATURES = [
+    "cap-shape",
+    "cap-surface",
+    "cap-color",
+    "bruises",
+    "odor",
+    "gill-attachment",
+    "gill-spacing",
+    "gill-size",
+    "gill-color",
+    "stalk-shape",
+    "stalk-root",
+    "stalk-surface",
+    "stalk-surface",
+    "stalk-color",
+    "stalk-color",
+    "veil-type",
+    "veil-color",
+    "ring-number",
+    "ring-type",
+    "spore-print",
+    "population",
+    "habitat",
+]
 class ExampleModel(Model):
     def __init__(self):
         rng = np.random.RandomState(0)
         train_ratio = 0.1
-        classes = {
-            "republican": False,
-            "democrat": True,
-        }
-        values = {
-            "y": lambda: True,
-            "?": lambda: rng.uniform() < 0.5,
-            "n": lambda: False,
-        }
-        features = [
-            "handicapped-infants",
-            "water-project-cost-sharing",
-            "adoption-of-the-budget-resolution",
-            "physician-fee-freeze",
-            "el-salvador-aid",
-            "religious-groups-in-schools",
-            "anti-satellite-test-ban",
-            "aid-to-nicaraguan-contras",
-            "mx-missile",
-            "immigration",
-            "synfuels-corporation-cutback",
-            "education-spending",
-            "superfund-right-to-sue",
-            "crime",
-            "duty-free-exports",
-            "export-administration-act-south-africa",
-        ]
         labels = []
         rows = []
-        with open("example/house-votes-84.data", "r") as f_in:
+        features = []
+        fix_lookup = {}
+        for (fix, f) in enumerate(FEATURES):
+            for (k, v) in VALUES[fix].items():
+                fix_lookup[(fix, k)] = len(features)
+                features.append("{0}={1}".format(f, v))
+        with open("example/agaricus-lepiota.data", "r") as f_in:
             for row in csv.reader(f_in):
-                labels.append(classes[row[0].strip()])
-                rows.append([ values[r.strip()]() for r in row[1:] ])
+                labels.append(CLASSES[row[0].strip()])
+                cur = [ False for _ in features ]
+                for (fix, r) in enumerate(row[1:]):
+                    if r.strip() == "?":
+                        r = rng.choice(list(VALUES[fix].keys()))
+                    cur[fix_lookup[(fix, r.strip())]] = True
+                rows.append(cur)
         labels = np.array(labels, dtype=np.bool)
         rows = np.array(rows, dtype=np.bool)
         ixs = list(range(rows.shape[0]))

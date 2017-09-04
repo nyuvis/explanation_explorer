@@ -2,7 +2,7 @@
 
 Explainer is a visual interface to explore similarly explained data items.
 Having a trained machine learning model it is possible to create explanations for
-data items by probing model inputs (not yet part of this repository).
+data items by probing model inputs.
 The visual analytics interface groups similar explanations together and provides
 an interactive way of exploring the significants and quantity of those explanations
 in a given data set, i.e., a validation data set.
@@ -51,7 +51,9 @@ file in the current folder) which contains the definition of `YourModel` which
 is a subclass of `defs.Model`. `output` is the folder where the two output
 files (the input to `./server.py`) are written to.
 
-`example.py` contains an example implementation and can be used like this:
+`example.py` contains an example implementation for a categorical dataset
+(whether mushrooms are edible given certain physical features)
+and can be used like this:
 
 ```bash
 ./create_explanations.py example ExampleModel output
