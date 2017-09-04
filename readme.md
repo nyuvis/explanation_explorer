@@ -31,10 +31,37 @@ After that the project is ready to run.
 ./server.py input.csv expl.json
 ```
 
-where `input.csv` and `expl.json` are files as described [below](#input-format).
+where `input.csv` and `expl.json` are files as described [below](#input-format)
+or as created with [`create_explanations.py`](#creating-explanations).
 Once the server is started navigate to the URL as prompted in the server output.
 
 Run `./server.py -h` to get a list of all input arguments.
+
+## Creating explanations
+
+In order to create explanations you can implement a subclass of the `Model`
+class in `defs.py`. Then you can call `create_explanations.py` with:
+
+```bash
+./create_explanations.py yourfile YourModel output
+```
+
+where `yourfile` is a relative python module path (ie., `yourfile.py` is a
+file in the current folder) which contains the definition of `YourModel` which
+is a subclass of `defs.Model`. `output` is the folder where the two output
+files (the input to `./server.py`) are written to.
+
+`example.py` contains an example implementation and can be used like this:
+
+```bash
+./create_explanations.py example ExampleModel output
+```
+
+And the server can then be started via:
+
+```bash
+./server.py output/examplemodel.csv output/examplemodel.lime.json
+```
 
 ## Input format
 

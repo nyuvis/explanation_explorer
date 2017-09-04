@@ -50,6 +50,7 @@ class ExplanationGenerator(object):
 
     def get_expl_obj(self, model):
         self._has_err = False
+        sampler = self.create_sampler(model)
         shape = model.shape()
 
         def get_expl(rix):
@@ -57,7 +58,7 @@ class ExplanationGenerator(object):
             pred_score = model.predict_proba(row)[0]
             pred = model.predict_score(pred_score)
             label = model.get_label(rix)
-            expl = self.get_explanation(model, row, label, rix)
+            expl = self.get_explanation(sampler, model, row, label, rix)
             return {
                 "ix": rix,
                 "label": 1 if label else 0,
@@ -78,7 +79,10 @@ class ExplanationGenerator(object):
             "expls": expls,
         }
 
-    def get_explanation(self, model, row, label, rix):
+    def create_sampler(self, model):
+        raise NotImplementedError()
+
+    def get_explanation(self, sampler, model, row, label, rix):
         raise NotImplementedError()
 
 
@@ -91,35 +95,52 @@ class LIME(ExplanationGenerator):
         self._wt = weight_th
         self._warn_low_auc = None
 
-    def get_explanation(self, model, row, label, rix):
+    def get_explanation(self, sampler, model, row, label, rix):
         rng = np.random.RandomState(rix)
-        s_rows, s_labels = self._sample(model, row, label, rng)
+        s_rows, s_labels = self._sample(sampler, model, row, label, rng)
         res = self._sample_model(s_rows, s_labels, rng)
         ixs = np.argsort(-np.abs(res)).tolist()
         prefixs = [ "-", " ", "+" ]
         return [ [ ix, prefixs[int(np.sign(res[ix]) + 1)] ] for ix in ixs if np.abs(res[ix]) >= self._wt ]
 
-    def _sample(self, model, row, own_label, rng):
+    def create_sampler(self, model):
+        features = model.features()
+        f_groups = {}
+
+        for (fix, f) in enumerate(features):
+            if "=" not in f:
+                if f in f_groups:
+                    raise ValueError("duplicate feature name '{0}'".format(f))
+                f_groups[f] = [ fix ]
+                continue
+            f = f[:f.index("=")]
+            if f not in f_groups:
+                f_groups[f] = []
+            f_groups[f].append(fix)
+
+        fixss = list(f_groups.values())
+
+        def sample(mat, rng, r):
+            for rix in range(mat.shape[0]):
+                for fixs in fixss:
+                    if rng.uniform() < r:
+                        if len(fixs) == 1:
+                            mat[rix, fixs[0]] = rng.choice([ False, True ])
+                        else:
+                            mat[rix, fixs] = False
+                            mat[rix, rng.choice(fixs)] = True
+
+        return sample
+
+    def _sample(self, sampler, model, row, own_label, rng):
         bs = self._bs
         radius = self._sr
         step = self._ss
-
-        def build_sampler():
-
-            def sample(mat, r):
-                for rix in range(mat.shape[0]):
-                    for cix in range(mat.shape[1]):
-                        if rng.uniform() < r:
-                            mat[rix, cix] = rng.choice([ False, True ])
-
-            return sample
-
-        sampler = build_sampler()
         all_rows = None
         all_labels = np.array([], dtype=np.bool)
         while min(np.sum(all_labels), all_labels.shape[0] - np.sum(all_labels)) < bs / 2:
             batch = np.repeat(row, bs, axis=0)
-            sampler(batch, radius)
+            sampler(batch, rng, radius)
             labels = model.predict_label(batch) == own_label
             all_rows = np.vstack((all_rows, batch)) if all_rows is not None else batch
             all_labels = np.hstack((all_labels, labels))

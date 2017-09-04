@@ -23,7 +23,11 @@ class Model(object):
         raise NotImplementedError()
 
     def features(self):
-        """Returns the feature names as list."""
+        """Returns the feature names as list.
+           Features that contain a '=' are interpreted as categorical
+           features where the left side is the name and the right side is
+           the value of the feature.
+        """
         raise NotImplementedError()
 
     def threshold(self):
