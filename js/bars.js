@@ -629,7 +629,7 @@ function Bars(sel, selHead, size, leftColor, rightColor, selectColor, fmt) {
       nhT.exit().remove();
       nhT.enter().append("line").classed("orticks", true);
       nhT.attr({
-        "stroke": "black",
+        "stroke": "gray",
         "stroke-width": (tick) => tick !== 1.0 ? 0.2 : 1,
         "stroke-dasharray": head ? null : [ barHeight * 0.1, barHeight * 0.1 ],
         "x1": (tick) => orScale(tick),
