@@ -8,7 +8,7 @@ an interactive way of exploring the significants and quantity of those explanati
 in a given data set, i.e., a validation data set.
 
 You can find a [live demo here](http://nyuvis-web.poly.edu/projects/explanation_explorer/)
-which uses the example dataset [below](#creating-explanations).
+which uses the example data set [below](#creating-explanations).
 
 [![Overview of the Explanation Explorer](explainer.png)](https://vimeo.com/235631465)
 
@@ -56,7 +56,7 @@ files (the input to `./server.py`) are written to.
 
 `./create_explanations.py` uses an adaption of the [LIME algorithm](https://arxiv.org/abs/1602.04938) by default.
 
-`example.py` contains an example implementation for a categorical dataset
+`example.py` contains an example implementation for a categorical data set
 (whether mushrooms are edible given certain physical features)
 and can be used like this:
 
