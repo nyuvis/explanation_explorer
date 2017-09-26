@@ -1,13 +1,13 @@
-# Explainer
+# Explanation Explorer
 
-Explainer is a visual interface to explore similarly explained data items.
+The **Explanation Explorer** is a visual interface to explore similarly explained data items.
 Having a trained machine learning model it is possible to create explanations for
 data items by probing model inputs.
 The visual analytics interface groups similar explanations together and provides
 an interactive way of exploring the significants and quantity of those explanations
 in a given data set, i.e., a validation data set.
 
-![Overview of Explainer](explainer.png)
+[![Overview of the Explanation Explorer](explainer.png)](http://nyuvis-web.poly.edu/projects/explanation_explorer/)
 
 ## Publications
 
@@ -66,6 +66,10 @@ And the server can then be started via:
 ```bash
 ./server.py output/examplemodel.csv output/examplemodel.lime.json
 ```
+
+## Demo
+
+The above example can also be found [here](http://nyuvis-web.poly.edu/projects/explanation_explorer/).
 
 ## Input format
 
