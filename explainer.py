@@ -764,15 +764,25 @@ class Explainer(object):
 
         feature_importances = self._get_discriminant(good, score)
         ignore_fixs = set()
+        force_fs = set()
+
+        def in_expl(f, expl):
+            for e in expl:
+                if f in e:
+                    return True
+            return False
 
         if compact:
             for (fix, f) in enumerate(self._features):
-                if feature_importances[f] == 0 and f not in expl:
+                if feature_importances[f] == 0 and not in_expl(f, expl):
                     ignore_fixs.add(fix)
+                elif in_expl(f, expl):
+                    force_fs.add(f)
 
         groups = self._dm.get_groups(good, ignore_fixs)
         g_lookup = {}
         group_keys = sorted(groups.keys(), key=lambda g: (len(groups[g]), len(g)), reverse=True)
+
         for (kix, g) in enumerate(group_keys):
             for f in g:
                 if f not in g_lookup:
@@ -784,13 +794,12 @@ class Explainer(object):
             "stats": self._group_count_by_label(groups[g], score, simple=True),
         } for g in group_keys ]
 
-        expl = frozenset(expl)
-        features = sorted(self._features, key=lambda f: (0 if f in expl else 1, -len(g_lookup.get(f, [])), f))
+        features = sorted(self._features, key=lambda f: (0 if in_expl(f, expl) else 1, -len(g_lookup.get(f, [])), f))
         return groups, [ {
             "feature": f,
-            "in_expl": f in expl,
-            "groups": g_lookup[f],
-        } for f in features if f in g_lookup ], feature_importances
+            "in_expl": in_expl(f, expl),
+            "groups": g_lookup.get(f, []),
+        } for f in features if f in g_lookup or f in force_fs ], feature_importances
 
 
     def get_stats(self, ixs, score):
