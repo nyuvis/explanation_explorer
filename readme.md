@@ -7,7 +7,10 @@ The visual analytics interface groups similar explanations together and provides
 an interactive way of exploring the significants and quantity of those explanations
 in a given data set, i.e., a validation data set.
 
-[![Overview of the Explanation Explorer](explainer.png)](http://nyuvis-web.poly.edu/projects/explanation_explorer/)
+You can find a [live demo here](http://nyuvis-web.poly.edu/projects/explanation_explorer/)
+which uses the example dataset [below](#creating-explanations).
+
+[![Overview of the Explanation Explorer](explainer.png)](https://vimeo.com/235631465)
 
 ## Publications
 
@@ -66,10 +69,6 @@ And the server can then be started via:
 ```bash
 ./server.py output/examplemodel.csv output/examplemodel.lime.json
 ```
-
-## Demo
-
-The above example can also be found [here](http://nyuvis-web.poly.edu/projects/explanation_explorer/).
 
 ## Input format
 
