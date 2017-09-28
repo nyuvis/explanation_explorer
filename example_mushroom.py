@@ -190,10 +190,10 @@ FEATURES = [
     "population",
     "habitat",
 ]
-class ExampleModel(Model):
+class MushroomModel(Model):
     def __init__(self):
         rng = np.random.RandomState(0)
-        train_ratio = 0.1
+        train_ratio = 0.1 # we can afford to have very little test data
         labels = []
         rows = []
         features = []
@@ -202,7 +202,7 @@ class ExampleModel(Model):
             for (k, v) in VALUES[fix].items():
                 fix_lookup[(fix, k)] = len(features)
                 features.append("{0}={1}".format(f, v))
-        with open("example/agaricus-lepiota.data", "r") as f_in:
+        with open("example/mushroom/agaricus-lepiota.data", "r") as f_in:
             for row in csv.reader(f_in):
                 labels.append(CLASSES[row[0].strip()])
                 cur = [ False for _ in features ]
