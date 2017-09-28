@@ -178,7 +178,7 @@ class LIME(ExplanationGenerator):
             radius *= step
             if radius > 1e10:
                 if not self._has_err:
-                    self._msg("[WARNING] no valid sample found!")
+                    print("[WARNING] no valid sample found!", file=sys.stdout)
                 self._has_err = True
                 break
         return all_rows, all_labels
@@ -194,7 +194,7 @@ class LIME(ExplanationGenerator):
         auc = roc_auc_score(labels, preds)
         if (self._warn_low_auc is None and auc < 0.7) or \
                 (self._warn_low_auc is not None and auc < self._warn_low_auc):
-            self._msg("[WARNING] low AUC for local model: {0}", auc)
+            print("[WARNING] low AUC for local model: {0}".format(auc), file=sys.stdout)
             self._warn_low_auc = auc
         if auc <= 0.5:
             return np.zeros((rows.shape[1],))
