@@ -3,6 +3,7 @@
 /.cmd_history
 *.json
 *.csv
+/log.txt
 /tmp/
 *.pyc
 /venv
