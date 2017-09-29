@@ -301,5 +301,9 @@ class MushroomModel(Model):
         """
         return self._model.predict_proba(X)[:, self._cix]
 
+    def use_csr(self):
+        """Whether to use CSR instead of CSV to store the matrix."""
+        return False # the dataset is small enough
+
     def create_explainer(self):
         return LIME(step=1.1, weight_th=2.1)

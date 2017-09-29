@@ -99,6 +99,10 @@ The first row contains the column names.
 There is one special columns
 `label` (containing the ground truth label `0` or `1`) and
 the file should only contain rows of the validation data set.
+Optionally, the input data can be stored as CSR file (`*.csr`) which is a
+CSV file where the first row is `label` followed by the feature names and
+the following rows contain the label as first element and then the indices
+of the features that are 1 (the data has to be binary for that).
 
 The explanation description is a JSON file of the following format:
 
