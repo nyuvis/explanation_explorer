@@ -30,6 +30,15 @@ class ExplanationGenerator(object):
                     for cix in range(shape[1])
                 ] + [ 1 if model.get_label(rix) else 0 ])
 
+    def write_csr(self, model, filename):
+        with open(filename, "w") as f_out:
+            out = csv.writer(f_out)
+            out.writerow([ "label" ] + model.features())
+            shape = model.shape()
+            for rix in range(shape[0]):
+                row = np.array(model.get_row(rix)).reshape((-1,))
+                out.writerow([ 1 if model.get_label(rix) else 0 ] + np.nonzero(row)[0].tolist())
+
     def write_expl(self, model, filename):
         obj = self.get_expl_obj(model)
         obj["test_auc"] = float(obj["test_auc"])
@@ -86,8 +95,11 @@ class ExplanationGenerator(object):
         raise NotImplementedError()
 
 
+DEBUG_SAMPLE = False
+DEBUG_RADIUS = False
+DEBUG_EXPLS = False
 class LIME(ExplanationGenerator):
-    def __init__(self, batch_size=100, start_radius=1e-2, step=1.2, weight_th=1.8):
+    def __init__(self, batch_size=100, start_radius=1e-2, step=1.2, weight_th=1.8, max_radius=1e10):
         """Creates a LIME explanation generator.
         ( https://arxiv.org/abs/1602.04938 -- some minor modifications)
 
@@ -109,11 +121,15 @@ class LIME(ExplanationGenerator):
         weight_th : float
             The weight threshold to include features in the explanation.
             Larger values shorten explanations.
+
+        max_radius : float
+            The maximum radius before giving up.
         """
         ExplanationGenerator.__init__(self)
         if batch_size < 10:
             raise ValueError("batch_size too small: {0}".format(batch_size))
         self._bs = batch_size
+        self._th = min(self._bs / 8, 2)
         if start_radius <= 0.0:
             raise ValueError("start_radius must be positive: {0}".format(start_radius))
         self._sr = start_radius
@@ -123,6 +139,9 @@ class LIME(ExplanationGenerator):
         if weight_th < 0.0:
             raise ValueError("weight_th must be non-negative: {0}".format(weight_th))
         self._wt = weight_th
+        if max_radius < start_radius:
+            raise ValueError("max_radius must be larger than start_radius: {0} >= {1}".format(start_radius, max_radius))
+        self._max_radius = max_radius
         self._warn_low_auc = None
 
     def get_explanation(self, sampler, model, row, label, rix):
@@ -130,8 +149,14 @@ class LIME(ExplanationGenerator):
         s_rows, s_labels = self._sample(sampler, model, row, label, rng)
         res = self._sample_model(s_rows, s_labels, rng)
         ixs = np.argsort(-np.abs(res)).tolist()
-        prefixs = [ "↓", " ", "↑" ]
-        return [ [ ix, prefixs[int(np.sign(res[ix]) + 1)] ] for ix in ixs if np.abs(res[ix]) >= self._wt ]
+        # prefixs = [ "↓", " ", "↑" ]
+        # return [ [ ix, prefixs[int(np.sign(res[ix]) + 1)] ] for ix in ixs if np.abs(res[ix]) >= self._wt ]
+        rmax = np.max(res)
+        rstd = np.std(res)
+        expl = [ ix for ix in ixs if res[ix] > 0 and res[ix] >= rmax - rstd * self._wt ]
+        if DEBUG_EXPLS:
+            print(np.array(sorted(res, reverse=True)), rmax, rstd, rmax - rstd * self._wt, expl)
+        return [ [ ix, "" ] for ix in expl ]
 
     def create_sampler(self, model):
         features = model.features()
@@ -151,35 +176,44 @@ class LIME(ExplanationGenerator):
         fixss = list(f_groups.values())
 
         def sample(mat, rng, r):
+            mr = min(r, 0.5)
             for rix in range(mat.shape[0]):
                 for fixs in fixss:
-                    if rng.uniform() < r:
-                        if len(fixs) == 1:
+                    if len(fixs) == 1:
+                        if mat[rix, fixs[0]]:
+                            mat[rix, fixs[0]] = rng.uniform() > mr
+                        elif rng.uniform() < r:
                             mat[rix, fixs[0]] = rng.choice([ False, True ])
-                        else:
-                            mat[rix, fixs] = False
-                            mat[rix, rng.choice(fixs)] = True
-
+                    elif rng.uniform() < r:
+                        mat[rix, fixs] = False
+                        mat[rix, rng.choice(fixs)] = True
+                if DEBUG_SAMPLE:
+                    print(mat[rix, :])
         return sample
 
     def _sample(self, sampler, model, row, own_label, rng):
         bs = self._bs
+        th = self._th
         radius = self._sr
         step = self._ss
         all_rows = None
         all_labels = np.array([], dtype=np.bool)
-        while min(np.sum(all_labels), all_labels.shape[0] - np.sum(all_labels)) < bs / 2:
+        while min(np.sum(all_labels), all_labels.shape[0] - np.sum(all_labels)) < th:
             batch = np.repeat(row, bs, axis=0)
             sampler(batch, rng, radius)
             labels = model.predict_label(batch) == own_label
             all_rows = np.vstack((all_rows, batch)) if all_rows is not None else batch
             all_labels = np.hstack((all_labels, labels))
+            if DEBUG_RADIUS:
+                print(radius, np.sum(all_labels), all_labels.shape[0] - np.sum(all_labels))
             radius *= step
-            if radius > 1e10:
+            if radius > self._max_radius:
                 if not self._has_err:
-                    self._msg("[WARNING] no valid sample found!")
+                    print("[WARNING] no valid sample found!", file=sys.stdout)
                 self._has_err = True
                 break
+        if DEBUG_RADIUS:
+            print("next")
         return all_rows, all_labels
 
     def _sample_model(self, rows, labels, rng):
@@ -193,7 +227,7 @@ class LIME(ExplanationGenerator):
         auc = roc_auc_score(labels, preds)
         if (self._warn_low_auc is None and auc < 0.7) or \
                 (self._warn_low_auc is not None and auc < self._warn_low_auc):
-            self._msg("[WARNING] low AUC for local model: {0}", auc)
+            print("[WARNING] low AUC for local model: {0}".format(auc), file=sys.stdout)
             self._warn_low_auc = auc
         if auc <= 0.5:
             return np.zeros((rows.shape[1],))

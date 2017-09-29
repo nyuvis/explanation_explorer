@@ -243,8 +243,10 @@ class _DataMatrix_v1(object):
 
 
     def _load(self, data_file, features, expls, msg):
+        if data_file.endswith(".csr"):
+            return self._load_csr(data_file, features, expls, msg)
         load_time = time.clock()
-        msg("loading data..")
+        msg("loading CSV data..")
         skip = frozenset([ "label" ])
         labels = []
         values = []
@@ -302,6 +304,42 @@ class _DataMatrix_v1(object):
             if expls[pos]["label"] != l:
                 raise ValueError("inconsistent label at index {0}".format(pos))
 
+        msg("loading data took {0}s", time.clock() - load_time)
+        return matrix, mins, diffs
+
+
+    def _load_csr(self, data_file, features, expls, msg):
+        load_time = time.clock()
+        msg("loading CSR data..")
+
+        labels = []
+        data = []
+        indices = []
+        indptr = [ 0 ]
+        feature_map = None
+        with open(data_file, "r") as f_in:
+            for row in csv.reader(f_in):
+                if feature_map is None:
+                    own_features = row[1:]
+                    features_lookup = dict((f, ix) for (ix, f) in enumerate(features))
+                    feature_map = dict((fix, features_lookup[f]) for (fix, f) in enumerate(own_features))
+                    continue
+                labels.append(int(row[0]) > 0)
+                for fix in row[1:]:
+                    data.append(True)
+                    indices.append(feature_map[fix])
+                indptr.append(len(data))
+        labels = np.array(labels, dtype=np.bool)
+        matrix = csr_matrix((data, indices, indptr),
+            shape=(len(indptr) - 1, len(features)), dtype=np.bool).todense()
+        matrix.sort_indices()
+
+        for (pos, l) in enumerate(labels):
+            if expls[pos]["label"] != l:
+                raise ValueError("inconsistent label at index {0}".format(pos))
+
+        mins = np.zeros((len(features),), dtype=np.float64)
+        diffs = np.ones((len(features),), dtype=np.float64)
         msg("loading data took {0}s", time.clock() - load_time)
         return matrix, mins, diffs
 

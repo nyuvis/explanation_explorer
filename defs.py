@@ -66,6 +66,10 @@ class Model(object):
                 total += 1
         return total
 
+    def use_csr(self):
+        """Whether to use CSR instead of CSV to store the matrix."""
+        return True
+
     def create_explainer(self):
         return LIME()
 
