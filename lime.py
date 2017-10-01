@@ -99,7 +99,7 @@ DEBUG_SAMPLE = False
 DEBUG_RADIUS = False
 DEBUG_EXPLS = False
 class LIME(ExplanationGenerator):
-    def __init__(self, batch_size=100, start_radius=1e-2, step=1.2, weight_th=1.8, max_radius=1e10):
+    def __init__(self, batch_size=100, start_radius=1e-2, step=1.2, weight_th=1.8, max_radius=1e10, max_length=None):
         """Creates a LIME explanation generator.
         ( https://arxiv.org/abs/1602.04938 -- some minor modifications)
 
@@ -124,6 +124,9 @@ class LIME(ExplanationGenerator):
 
         max_radius : float
             The maximum radius before giving up.
+
+        max_length : int
+            The maximum explanation length or None.
         """
         ExplanationGenerator.__init__(self)
         if batch_size < 10:
@@ -142,20 +145,23 @@ class LIME(ExplanationGenerator):
         if max_radius < start_radius:
             raise ValueError("max_radius must be larger than start_radius: {0} >= {1}".format(start_radius, max_radius))
         self._max_radius = max_radius
+        if max_length < 1:
+            raise ValueError("max_length must be positive: {0}".format(max_length))
+        self._max_length = max_length
         self._warn_low_auc = None
 
     def get_explanation(self, sampler, model, row, label, rix):
         rng = np.random.RandomState(rix)
         s_rows, s_labels = self._sample(sampler, model, row, label, rng)
         res = self._sample_model(s_rows, s_labels, rng)
-        ixs = np.argsort(-np.abs(res)).tolist()
-        # prefixs = [ "↓", " ", "↑" ]
-        # return [ [ ix, prefixs[int(np.sign(res[ix]) + 1)] ] for ix in ixs if np.abs(res[ix]) >= self._wt ]
+        ixs = range(res.shape[0])
         rmax = np.max(res)
         rstd = np.std(res)
-        expl = [ ix for ix in ixs if res[ix] > 0 and res[ix] >= rmax - rstd * self._wt ]
+        expl = [ ix for ix in ixs if row[0, ix] and res[ix] > 0 and res[ix] >= rmax - 2.0 * rstd * self._wt ]
         if DEBUG_EXPLS:
-            print(np.array(sorted(res, reverse=True)), rmax, rstd, rmax - rstd * self._wt, expl)
+            print(np.array(sorted(res, reverse=True)), rmax, rstd, rmax - rstd * self._wt, expl, len(expl) > self._max_length)
+        if self._max_length is not None and len(expl) > self._max_length:
+            expl = []
         return [ [ ix, "" ] for ix in expl ]
 
     def create_sampler(self, model):

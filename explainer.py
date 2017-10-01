@@ -13,7 +13,7 @@ import random
 
 import numpy as np
 from sklearn.tree import DecisionTreeClassifier
-from scipy.sparse import coo_matrix
+from scipy.sparse import coo_matrix, csr_matrix
 
 class _Explanation_v0(object):
     def __init__(self, features, pred, obj_up, obj_down):
@@ -327,11 +327,11 @@ class _DataMatrix_v1(object):
                 labels.append(int(row[0]) > 0)
                 for fix in row[1:]:
                     data.append(True)
-                    indices.append(feature_map[fix])
+                    indices.append(feature_map[int(fix)])
                 indptr.append(len(data))
         labels = np.array(labels, dtype=np.bool)
         matrix = csr_matrix((data, indices, indptr),
-            shape=(len(indptr) - 1, len(features)), dtype=np.bool).todense()
+            shape=(len(indptr) - 1, len(features)), dtype=np.bool)
         matrix.sort_indices()
 
         for (pos, l) in enumerate(labels):
@@ -360,6 +360,7 @@ class _DataMatrix_v1(object):
         # in case of empty explanations
         # TODO think about better solution
         _, nz = self._matrix[ix, :].nonzero()
+        print(len([ self._features[pos] for pos in nz ]))
         return [ self._features[pos] for pos in nz ]
 
 
