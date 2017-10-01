@@ -70,7 +70,7 @@ and can be used like this:
 And the server can then be started via:
 
 ```bash
-./server.py output/airbnbmodel.csv output/airbnbmodel.lime.json
+./server.py output/airbnbmodel.csr output/airbnbmodel.lime.json
 ```
 
 ### Mushrooms
