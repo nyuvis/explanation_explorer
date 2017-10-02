@@ -68,8 +68,6 @@ class _Explanation_v1(object):
             return features[fix]
 
         self._expl = [ "{0}{1}{2}".format(e[1], get_feature(e[0]), postfixes[e[0]]) for e in expl["expl"] ]
-        # if len(self._expl) == 0:
-        #     self._expl = [ "{0}{1}".format(f, postfixes[ix]) for (ix, f) in enumerate(features) if postfixes[ix] is not None ]
 
 
     def get_explanation(self, score):
@@ -107,7 +105,7 @@ class _DataMatrix_v0(object):
                 load_time = time.clock()
                 msg("loading matrix from cache..")
                 matrix, ix_map, train_labels, train_ix_map = c.read()
-                msg("loading matrix from cache took {0}s", time.clock() - load_time)
+                msg("loading matrix from cache took {0:0.4f}s", time.clock() - load_time)
             else:
                 matrix, ix_map, train_labels, train_ix_map = c.write(self._load(csvfile, ixs, train_ixs, labels, features, msg))
         self._matrix = matrix
@@ -163,7 +161,7 @@ class _DataMatrix_v0(object):
 
         matrix = coo_matrix((np.repeat(1, len(temp_rows)), (temp_rows, temp_cols)), shape=(len(ixs), len(features)), dtype=np.int8)
 
-        msg("loading matrix took {0}s", time.clock() - load_time)
+        msg("loading matrix took {0:0.4f}s", time.clock() - load_time)
         return matrix.tocsr(), ix_map, train_labels, train_ix_map
 
 
@@ -233,7 +231,7 @@ class _DataMatrix_v1(object):
                 load_time = time.clock()
                 msg("loading matrix from cache..")
                 matrix, mins, diffs = c.read()
-                msg("loading matrix from cache took {0}s", time.clock() - load_time)
+                msg("loading matrix from cache took {0:0.4f}s", time.clock() - load_time)
             else:
                 matrix, mins, diffs = c.write(self._load(csvfile, features, expls, msg))
         self._features = features
@@ -304,7 +302,7 @@ class _DataMatrix_v1(object):
             if expls[pos]["label"] != l:
                 raise ValueError("inconsistent label at index {0}".format(pos))
 
-        msg("loading data took {0}s", time.clock() - load_time)
+        msg("loading data took {0:0.4f}s", time.clock() - load_time)
         return matrix, mins, diffs
 
 
@@ -340,7 +338,7 @@ class _DataMatrix_v1(object):
 
         mins = np.zeros((len(features),), dtype=np.float64)
         diffs = np.ones((len(features),), dtype=np.float64)
-        msg("loading data took {0}s", time.clock() - load_time)
+        msg("loading data took {0:0.4f}s", time.clock() - load_time)
         return matrix, mins, diffs
 
 
@@ -360,7 +358,6 @@ class _DataMatrix_v1(object):
         # in case of empty explanations
         # TODO think about better solution
         _, nz = self._matrix[ix, :].nonzero()
-        print(len([ self._features[pos] for pos in nz ]))
         return [ self._features[pos] for pos in nz ]
 
 
@@ -475,7 +472,7 @@ class Explainer(object):
             "label": int(e["label"]) > 0,
             "pred": float(e["pred"]),
         } for e in expls ]
-        msg("loading explanations took {0}s", time.clock() - expl_time)
+        msg("loading explanations took {0:0.4f}s", time.clock() - expl_time)
         dm = _DataMatrix_v0(csvfile, self._ixs, self._train_ixs,
             self._lookup_key(self._ixs, lambda e: e["label"]), self._features, cache, msg)
         self._dm = dm
@@ -522,7 +519,7 @@ class Explainer(object):
         if actual_pos != int(obj["total_true"]):
             raise ValueError("inconsistent positive labels {0} != {1}".format(actual_pos, obj["total_true"]))
 
-        msg("loading explanations took {0}s", time.clock() - expl_time)
+        msg("loading explanations took {0:0.4f}s", time.clock() - expl_time)
         dm = _DataMatrix_v1(csvfile, features, self._expls, cache, msg)
         self._dm = dm
 

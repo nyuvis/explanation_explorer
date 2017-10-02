@@ -411,7 +411,7 @@ function Bars(sel, selHead, size, leftColor, rightColor, selectColor, fmt) {
           "y": 0,
           "width": getPWidth(id),
           "height": barHeight,
-        }, false, jkjs.text.align.middle, jkjs.text.position.center, pTitle(id), false);
+        }, false, jkjs.text.align.middle, jkjs.text.position.center, pTitle(id), false, true);
       });
 
       var sRects = [
