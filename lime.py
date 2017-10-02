@@ -145,7 +145,7 @@ class LIME(ExplanationGenerator):
         if max_radius < start_radius:
             raise ValueError("max_radius must be larger than start_radius: {0} >= {1}".format(start_radius, max_radius))
         self._max_radius = max_radius
-        if max_length < 1:
+        if max_length is not None and max_length < 1:
             raise ValueError("max_length must be positive: {0}".format(max_length))
         self._max_length = max_length
         self._warn_low_auc = None
@@ -159,7 +159,9 @@ class LIME(ExplanationGenerator):
         rstd = np.std(res)
         expl = [ ix for ix in ixs if row[0, ix] and res[ix] > 0 and res[ix] >= rmax - 2.0 * rstd * self._wt ]
         if DEBUG_EXPLS:
-            print(np.array(sorted(res, reverse=True)), rmax, rstd, rmax - rstd * self._wt, expl, len(expl) > self._max_length)
+            print(np.array(sorted(res, reverse=True)), rmax, rstd,
+                rmax - rstd * self._wt, expl,
+                self._max_length is not None and len(expl) > self._max_length)
         if self._max_length is not None and len(expl) > self._max_length:
             expl = []
         return [ [ ix, "" ] for ix in expl ]
