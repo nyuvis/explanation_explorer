@@ -68,8 +68,8 @@ class _Explanation_v1(object):
             return features[fix]
 
         self._expl = [ "{0}{1}{2}".format(e[1], get_feature(e[0]), postfixes[e[0]]) for e in expl["expl"] ]
-        if len(self._expl) == 0:
-            self._expl = [ "{0}{1}".format(f, postfixes[ix]) for (ix, f) in enumerate(features) if postfixes[ix] is not None ]
+        # if len(self._expl) == 0:
+        #     self._expl = [ "{0}{1}".format(f, postfixes[ix]) for (ix, f) in enumerate(features) if postfixes[ix] is not None ]
 
 
     def get_explanation(self, score):
