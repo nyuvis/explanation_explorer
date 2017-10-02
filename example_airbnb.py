@@ -18,7 +18,7 @@ from lime import LIME
 class AirbnbModel(Model):
     def __init__(self):
         rng = np.random.RandomState(0)
-        train_ratio = 0.8
+        train_ratio = 0.9
         labels = []
         features = None
 
@@ -53,7 +53,7 @@ class AirbnbModel(Model):
         test_ixs = ixs[split:]
         print("training model")
         model = MLPClassifier(activation='relu', random_state=rng, shuffle=True,
-            hidden_layer_sizes=tuple([ 100 for _ in range(4) ]),
+            hidden_layer_sizes=tuple([ 1000 for _ in range(4) ]),
             max_iter=1000, early_stopping=True, learning_rate='adaptive')
         model.fit(rows[train_ixs, :], labels[train_ixs])
         print("training done")
@@ -143,4 +143,4 @@ class AirbnbModel(Model):
         return True
 
     def create_explainer(self):
-        return LIME(batch_size=1000, step=3, weight_th=1.0, max_radius=0.5, max_length=10)
+        return LIME(batch_size=1000, step=3, weight_th=1.2, max_radius=0.5, max_length=10)
