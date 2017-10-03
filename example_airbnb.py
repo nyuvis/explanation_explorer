@@ -143,4 +143,4 @@ class AirbnbModel(Model):
         return True
 
     def create_explainer(self):
-        return LIME(batch_size=1000, step=3, weight_th=1.2, max_radius=0.5, max_length=10)
+        return LIME(batch_size=1000, step=3, weight_th=1.0, max_radius=0.5, max_length=10)
