@@ -16,7 +16,7 @@ which uses an example data set [below](#airbnb).
 
 [A Workflow for Visual Diagnostics of Binary Classifiers using Instance-Level Explanations](https://arxiv.org/abs/1705.01968);
 Josua Krause, Aritra Dasgupta, Jordan Swartz, Yindalon Aphinyanaphongs, Enrico Bertini;
-To be published at IEEE VAST 2017.
+Published at IEEE VAST 2017. [[slides]](explainer.key)
 
 ## Getting started
 
